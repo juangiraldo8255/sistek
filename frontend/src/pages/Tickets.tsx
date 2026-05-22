@@ -5,6 +5,7 @@ import { commentService, Comment } from "../services/commentService";
 import { authService } from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 import ReopenModal from "../components/ReopenModal";
+import AttachmentSection from "../components/AttachmentSection";
 import "../styles.css";
 
 function Tickets() {
@@ -214,7 +215,7 @@ const verHistorial = async (ticketId: number) => {
   // VISTA CLIENTE
   if (user.role === "cliente") {
     return (
-      <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto" }}>
+      <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto", backgroundColor: dk.page, minHeight: "100vh" }}>
 
       {/* MODAL REAPERTURA */}
       {reopenTicket && (
@@ -247,33 +248,33 @@ const verHistorial = async (ticketId: number) => {
           ← Volver
         </button>
 
-        <div style={{ 
-          backgroundColor: "white",
-          border: "2px solid #3b82f6",
+        <div style={{
+          backgroundColor: isDark ? "#1e1e1e" : "white",
+          border: `2px solid ${isDark ? "#334155" : "#3b82f6"}`,
           borderRadius: "8px",
           padding: "25px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          boxShadow: isDark ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.1)",
           marginBottom: "30px"
         }}>
           <h2 style={{ color: "#3b82f6", marginTop: "0" }}>Crear Nuevo Ticket</h2>
-          <p style={{ color: "#666", marginBottom: "20px" }}>Completa el formulario para crear un nuevo ticket</p>
+          <p style={{ color: dk.textSub, marginBottom: "20px" }}>Completa el formulario para crear un nuevo ticket</p>
 
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+          {error && <p style={{ color: '#ef4444' }}>{error}</p>}
 
-          <input 
+          <input
             placeholder="Título del ticket"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={loading}
-            style={{ width: "100%", padding: "10px", marginBottom: "15px", border: "1px solid #ddd", borderRadius: "4px", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "10px", marginBottom: "15px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", boxSizing: "border-box", backgroundColor: dk.input, color: dk.text }}
           />
 
-          <textarea 
+          <textarea
             placeholder="Descripción detallada"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             disabled={loading}
-            style={{ width: "100%", padding: "10px", marginBottom: "15px", border: "1px solid #ddd", borderRadius: "4px", boxSizing: "border-box", minHeight: "120px" }}
+            style={{ width: "100%", padding: "10px", marginBottom: "15px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", boxSizing: "border-box", minHeight: "120px", backgroundColor: dk.input, color: dk.text }}
           />
 
           <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
@@ -281,7 +282,7 @@ const verHistorial = async (ticketId: number) => {
               value={type}
               onChange={(e) => setType(e.target.value)}
               disabled={loading}
-              style={{ flex: 1, padding: "10px", border: "1px solid #ddd", borderRadius: "4px", color: "#1f2937", backgroundColor: "white" }}
+              style={{ flex: 1, padding: "10px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", color: dk.text, backgroundColor: dk.input }}
             >
               <option value="Software">Software</option>
               <option value="Hardware">Hardware</option>
@@ -320,11 +321,11 @@ const verHistorial = async (ticketId: number) => {
             style={{
               flex: 1,
               padding: "11px 16px",
-              border: "1px solid #d1d5db",
+              border: `1px solid ${dk.inputBorder}`,
               borderRadius: "4px",
               fontSize: "14px",
-              color: "#1f2937",
-              backgroundColor: "white",
+              color: dk.text,
+              backgroundColor: dk.input,
               marginTop: "0",
               boxSizing: "border-box"
             }}
@@ -351,8 +352,8 @@ const verHistorial = async (ticketId: number) => {
             <button
               onClick={limpiarBusqueda}
               style={{
-                backgroundColor: "#e5e7eb",
-                color: "#374151",
+                backgroundColor: isDark ? "#334155" : "#e5e7eb",
+                color: isDark ? "#f1f5f9" : "#374151",
                 padding: "8px 14px",
                 border: "none",
                 borderRadius: "4px",
@@ -368,7 +369,7 @@ const verHistorial = async (ticketId: number) => {
           )}
         </div>
         {filtroBusqueda && (
-          <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "10px" }}>
+          <p style={{ color: dk.textSub, fontSize: "13px", marginBottom: "10px" }}>
             Resultados para: <strong>"{filtroBusqueda}"</strong> ({tickets.length} encontrado{tickets.length !== 1 ? "s" : ""})
           </p>
         )}
@@ -376,21 +377,21 @@ const verHistorial = async (ticketId: number) => {
         {/* MIS TICKETS */}
         <h3>Mis Tickets ({tickets.length})</h3>
         {tickets.length === 0 ? (
-          <p style={{ color: "#666", textAlign: "center", padding: "20px" }}>No tienes tickets creados aún</p>
+          <p style={{ color: dk.textSub, textAlign: "center", padding: "20px" }}>No tienes tickets creados aún</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             {tickets.map((ticket) => (
-              <div key={ticket.id} style={{ 
-                border: "1px solid #e5e7eb",
-                borderRadius: "6px", 
+              <div key={ticket.id} style={{
+                border: `1px solid ${dk.cardBorder}`,
+                borderRadius: "6px",
                 padding: "15px",
-                backgroundColor: "#fafafa"
+                backgroundColor: dk.card
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                   <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: "0 0 5px 0", color: "#1f2937" }}>{ticket.title}</h4>
-                    <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#666" }}>{ticket.description}</p>
-                    <div style={{ display: "flex", gap: "10px", fontSize: "13px", color: "#666", flexWrap: "wrap", alignItems: "center" }}>
+                    <h4 style={{ margin: "0 0 5px 0", color: dk.text }}>{ticket.title}</h4>
+                    <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: dk.textSub }}>{ticket.description}</p>
+                    <div style={{ display: "flex", gap: "10px", fontSize: "13px", color: dk.textSub, flexWrap: "wrap", alignItems: "center" }}>
                       <span>Estado: <strong>{ticket.status}</strong></span>
                       <span style={{
                         padding: "2px 10px",
@@ -424,30 +425,30 @@ const verHistorial = async (ticketId: number) => {
                 )}
 
                 {/* SECCIÓN DE COMENTARIOS */}
-                <div style={{ marginTop: "12px", borderTop: "1px dashed #d1d5db", paddingTop: "10px" }}>
+                <div style={{ marginTop: "12px", borderTop: `1px dashed ${dk.divider}`, paddingTop: "10px" }}>
                   <button
                     onClick={() => verComentarios(ticket.id)}
-                    style={{ background: "none", border: "none", color: "#7c3aed", fontSize: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", padding: "0" }}
+                    style={{ background: "none", border: "none", color: dk.commentBtn, fontSize: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", padding: "0" }}
                   >
                     {showCommentsId === ticket.id ? "▲ Ocultar Comentarios" : "▼ Ver Comentarios"}
                     {loadingComentarios && showCommentsId === ticket.id && " (Cargando...)"}
                   </button>
 
                   {showCommentsId === ticket.id && (
-                    <div style={{ marginTop: "10px", backgroundColor: "#fff", padding: "12px", borderRadius: "6px", border: "1px solid #e5e7eb" }}>
+                    <div style={{ marginTop: "10px", backgroundColor: dk.expanded, padding: "12px", borderRadius: "6px", border: `1px solid ${dk.expandedBorder}` }}>
                       {comentarios.length === 0 ? (
-                        <p style={{ fontSize: "12px", color: "#6b7280", textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún. ¡Sé el primero!</p>
+                        <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún. ¡Sé el primero!</p>
                       ) : (
                         <div style={{ marginBottom: "12px", maxHeight: "220px", overflowY: "auto" }}>
                           {comentarios.map((c) => (
-                            <div key={c.id} style={{ padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
+                            <div key={c.id} style={{ padding: "8px 0", borderBottom: `1px solid ${dk.divider}` }}>
                               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                                <span style={{ fontSize: "12px", fontWeight: "bold", color: "#374151" }}>{c.autor}</span>
-                                <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+                                <span style={{ fontSize: "12px", fontWeight: "bold", color: dk.text }}>{c.autor}</span>
+                                <span style={{ fontSize: "11px", color: dk.textSub }}>
                                   {new Date(c.created_at).toLocaleString('es-ES', { hour12: false })}
                                 </span>
                               </div>
-                              <p style={{ margin: "0", fontSize: "13px", color: "#4b5563" }}>{c.content}</p>
+                              <p style={{ margin: "0", fontSize: "13px", color: dk.label }}>{c.content}</p>
                             </div>
                           ))}
                         </div>
@@ -460,7 +461,7 @@ const verHistorial = async (ticketId: number) => {
                           value={nuevoComentario[ticket.id] || ""}
                           onChange={(e) => setNuevoComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
                           placeholder="Escribe un comentario..."
-                          style={{ width: "100%", padding: "8px", border: "1px solid #d1d5db", borderRadius: "4px", fontSize: "13px", resize: "vertical", minHeight: "60px", boxSizing: "border-box" }}
+                          style={{ width: "100%", padding: "8px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", fontSize: "13px", resize: "vertical", minHeight: "60px", boxSizing: "border-box", backgroundColor: dk.input, color: dk.text }}
                         />
                         <button
                           onClick={() => enviarComentario(ticket.id)}
@@ -473,6 +474,9 @@ const verHistorial = async (ticketId: number) => {
                     </div>
                   )}
                 </div>
+
+                {/* ADJUNTOS (HU-020) */}
+                <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
               </div>
             ))}
           </div>
@@ -856,6 +860,8 @@ const verHistorial = async (ticketId: number) => {
                 )}
               </div>
 
+              {/* ADJUNTOS (HU-020) */}
+              <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
               </div>
             ))}
           </div>

@@ -3,14 +3,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import pool from './config/database'; // Importar conexión a DB
 import userRoutes from './routes/userRoutes';
 import ticketRoutes from './routes/ticketRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import reportRoutes from './routes/reportRoutes';
+import attachmentRoutes from './routes/attachmentRoutes';
 import { createNotificationsTable } from './services/notificationService';
 import { migratePrioritiesToNewValues, createTicketHistoriaTable } from './services/ticketService';
 import { createCommentsTable } from './services/commentService';
+import { createAttachmentsTable } from './services/attachmentService';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -21,6 +24,9 @@ const port = process.env.PORT || 4000;
 // Middlewares
 app.use(express.json()); // Para parsear JSON
 app.use(cors()); // Habilitar CORS
+
+// Servir archivos adjuntos públicamente desde /uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -42,6 +48,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/attachments', attachmentRoutes);
 
 createNotificationsTable()
   .then(() => console.log('✅ Tabla notifications lista'))
@@ -58,6 +65,10 @@ migratePrioritiesToNewValues()
 createCommentsTable()
   .then(() => console.log('✅ Tabla comments lista'))
   .catch((err) => console.error('❌ Error creando tabla comments:', err));
+
+createAttachmentsTable()
+  .then(() => console.log('✅ Tabla attachments lista'))
+  .catch((err) => console.error('❌ Error creando tabla attachments:', err));
 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

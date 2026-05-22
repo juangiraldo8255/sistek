@@ -5,6 +5,7 @@ import { commentService, Comment } from "../services/commentService";
 import { authService } from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 import ReopenModal from "../components/ReopenModal";
+import AttachmentSection from "../components/AttachmentSection";
 import "../styles.css";
 
 function AdminTickets() {
@@ -815,6 +816,8 @@ function AdminTickets() {
                     )}
                   </div>
 
+                  {/* ADJUNTOS (HU-020) */}
+                  <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
                 </div>
               );
 })}
