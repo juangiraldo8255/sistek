@@ -162,7 +162,7 @@ export const getTicketHistory = async (req: Request, res: Response) => {
     // Validar permisos de visualización
     if (userRole === 'cliente' && ticket.user_id !== userId) {
       return res.status(403).json({ error: 'No puedes ver el historial de este ticket' });
-    } else if (userRole === 'agente' && ticket.assigned_agent_id !== userId && userRole !== 'administrador') {
+    } else if (userRole === 'agente' && ticket.assigned_agent_id !== userId) {
       return res.status(403).json({ error: 'No puedes ver el historial de este ticket' });
     }
 

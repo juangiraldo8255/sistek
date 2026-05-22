@@ -1,4 +1,5 @@
 import pool from '../config/database';
+import { getRatingsStats } from './ratingService';
 
 export interface ReportFilters {
   start_date?: string;
@@ -59,7 +60,7 @@ export const getReportData = async (filters: ReportFilters) => {
     ${ticketWhere}
   `, params);
 
-  // Promedio de tiempo de respuesta: desde created_at hasta el primer evento "En progreso"
+  // Promedio de tiempo de respuesta
   const responseResult = await pool.query(`
     SELECT ROUND(
       AVG(
@@ -96,12 +97,20 @@ export const getReportData = async (filters: ReportFilters) => {
     ORDER BY total DESC
   `, params);
 
+  // Métricas de satisfacción respetando los mismos filtros de fecha y agente
+  const calificaciones = await getRatingsStats({
+    start_date: filters.start_date,
+    end_date:   filters.end_date,
+    agent_id:   filters.agent_id,
+  });
+
   return {
     resumen: {
       ...resumenResult.rows[0],
       avg_respuesta_horas: responseResult.rows[0]?.avg_respuesta_horas ?? null,
     },
     por_agente: agentResult.rows,
+    calificaciones,
   };
 };
 
@@ -151,10 +160,13 @@ export const getTicketsForExport = async (filters: ReportFilters) => {
           (EXTRACT(EPOCH FROM (t.updated_at - t.created_at)) / 3600.0)::numeric, 1
         )
         ELSE NULL
-      END                                                                AS resolucion_horas
+      END                                                                AS resolucion_horas,
+      r.puntuacion                                                        AS calificacion,
+      r.comentario                                                        AS comentario_calificacion
     FROM tickets t
     JOIN users c ON t.user_id = c.id
     LEFT JOIN users a ON t.assigned_agent_id = a.id
+    LEFT JOIN ticket_ratings r ON r.ticket_id = t.id
     ${where}
     ORDER BY t.created_at DESC
   `, params);

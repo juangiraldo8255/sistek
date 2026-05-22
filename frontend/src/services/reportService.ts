@@ -30,9 +30,41 @@ export interface ReportAgente {
   avg_resolucion_horas: string | null;
 }
 
+export interface RatingAgente {
+  agente_id: number;
+  agente: string;
+  total_calificaciones: number;
+  promedio_calificacion: string | null;
+  pct_satisfaccion: string | null;
+  estrellas_1: number;
+  estrellas_2: number;
+  estrellas_3: number;
+  estrellas_4: number;
+  estrellas_5: number;
+}
+
+export interface RatingGeneral {
+  cerrados_total: number;
+  calificados: number;
+  no_calificados: number;
+  promedio_general: string | null;
+  pct_satisfaccion: string | null;
+  estrellas_1: number;
+  estrellas_2: number;
+  estrellas_3: number;
+  estrellas_4: number;
+  estrellas_5: number;
+}
+
+export interface CalificacionesData {
+  general: RatingGeneral;
+  por_agente: RatingAgente[];
+}
+
 export interface ReportData {
   resumen: ReportResumen;
   por_agente: ReportAgente[];
+  calificaciones: CalificacionesData;
 }
 
 export const reportService = {

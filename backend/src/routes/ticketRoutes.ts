@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as ticketController from '../controllers/ticketController';
 import * as commentController from '../controllers/commentController';
+import * as ratingController from '../controllers/ratingController';
 import { authMiddleware, adminOnly, clientOnly, agentOnly } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -38,5 +39,9 @@ router.delete('/:id', adminOnly, ticketController.deleteTicket);
 // Comentarios de un ticket
 router.get('/:id/comments', commentController.getComments);
 router.post('/:id/comments', commentController.createComment);
+
+// Calificación de un ticket (HU-021)
+router.get('/:id/rating', ratingController.getTicketRating);
+router.post('/:id/rating', clientOnly, ratingController.rateTicket);
 
 export default router;

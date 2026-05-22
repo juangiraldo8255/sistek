@@ -149,6 +149,21 @@ function Reports() {
     Abiertos:    a.abiertos,
   })) ?? [];
 
+  // Distribución de estrellas (1–5) para gráfico de barras
+  const dataDistribucion = data?.calificaciones ? [
+    { name: "1 ★", value: data.calificaciones.general.estrellas_1, fill: "#ef4444" },
+    { name: "2 ★", value: data.calificaciones.general.estrellas_2, fill: "#f97316" },
+    { name: "3 ★", value: data.calificaciones.general.estrellas_3, fill: "#f59e0b" },
+    { name: "4 ★", value: data.calificaciones.general.estrellas_4, fill: "#84cc16" },
+    { name: "5 ★", value: data.calificaciones.general.estrellas_5, fill: "#10b981" },
+  ] : [];
+
+  // Tabla unificada: une datos de ticket + calificaciones por agente
+  const agentesUnificados = data ? data.calificaciones.por_agente.map(ca => {
+    const ticket = data.por_agente.find(a => a.agente === ca.agente);
+    return { ...ca, ...ticket };
+  }) : [];
+
   return (
     <div className="dashboard-container">
       {/* SIDEBAR */}
@@ -375,49 +390,202 @@ function Reports() {
               </div>
             </div>
 
-            {/* TABLA POR AGENTE */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, color: "#374151" }}>Detalle por Agente</h3>
-              {data.por_agente.length === 0 ? (
-                <p style={{ color: "#6b7280", textAlign: "center", padding: "20px 0" }}>
-                  No hay tickets asignados con los filtros actuales.
-                </p>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                    <thead>
-                      <tr style={{ backgroundColor: "#f1f5f9" }}>
-                        {["Agente", "Total", "Abiertos", "En progreso", "Cerrados", "Prom. resolución"].map(h => (
-                          <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: "12px", color: "#475569", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.por_agente.map((a, i) => (
-                        <tr key={a.agente} style={{ backgroundColor: i % 2 === 0 ? "white" : "#f8fafc" }}>
-                          <td style={{ padding: "10px 14px", fontWeight: "600", color: "#1e293b", borderBottom: "1px solid #f1f5f9" }}>{a.agente}</td>
-                          <td style={{ padding: "10px 14px", borderBottom: "1px solid #f1f5f9" }}>{a.total}</td>
-                          <td style={{ padding: "10px 14px", borderBottom: "1px solid #f1f5f9" }}>
-                            <span style={{ color: "#ef4444", fontWeight: "bold" }}>{a.abiertos}</span>
-                          </td>
-                          <td style={{ padding: "10px 14px", borderBottom: "1px solid #f1f5f9" }}>
-                            <span style={{ color: "#f59e0b", fontWeight: "bold" }}>{a.en_progreso}</span>
-                          </td>
-                          <td style={{ padding: "10px 14px", borderBottom: "1px solid #f1f5f9" }}>
-                            <span style={{ color: "#10b981", fontWeight: "bold" }}>{a.cerrados}</span>
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#6366f1", fontWeight: "bold", borderBottom: "1px solid #f1f5f9" }}>
-                            {a.avg_resolucion_horas !== null ? `${a.avg_resolucion_horas} h` : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {/* SECCIÓN: SATISFACCIÓN DEL CLIENTE */}
+            {data.calificaciones && (
+              <>
+                {/* ── Métricas generales de satisfacción ── */}
+                <div className="card" style={{ marginBottom: "20px" }}>
+                  <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
+                    Satisfacción del Cliente
+                  </h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px" }}>
+                    <MetricCard
+                      label="Tickets calificados"
+                      value={data.calificaciones.general.calificados}
+                      sub={`de ${data.calificaciones.general.cerrados_total} cerrados`}
+                    />
+                    <MetricCard
+                      label="Sin calificar"
+                      value={data.calificaciones.general.no_calificados}
+                      sub="pendientes de valoración"
+                    />
+                    <MetricCard
+                      label="Promedio general"
+                      value={data.calificaciones.general.promedio_general !== null
+                        ? `${data.calificaciones.general.promedio_general} ★` : "—"}
+                      sub="sobre 5 estrellas"
+                    />
+                    <MetricCard
+                      label="% Satisfacción"
+                      value={data.calificaciones.general.pct_satisfaccion !== null
+                        ? `${data.calificaciones.general.pct_satisfaccion}%` : "—"}
+                      sub="calificaciones ≥ 4 ★"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* ── Gráfico de distribución de calificaciones ── */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+                  <div className="card">
+                    <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
+                      Distribución de Calificaciones
+                    </h3>
+                    {data.calificaciones.general.calificados === 0 ? (
+                      <p style={{ color: "#6b7280", textAlign: "center", padding: "30px 0" }}>
+                        Sin calificaciones registradas
+                      </p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={dataDistribucion} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                          <XAxis dataKey="name" fontSize={12} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                          <YAxis fontSize={12} allowDecimals={false} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${gridColor}`, color: tooltipText }}
+                            labelStyle={{ color: tooltipText }}
+                            formatter={(v: any) => [`${v} calificación${v !== 1 ? "es" : ""}`, ""]}
+                          />
+                          <Bar dataKey="value" name="Calificaciones" radius={[4, 4, 0, 0]}>
+                            {dataDistribucion.map((entry, i) => (
+                              <Cell key={i} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  {/* ── Desglose numérico de distribución ── */}
+                  <div className="card">
+                    <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
+                      Detalle de Distribución
+                    </h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {[
+                        { stars: 5, count: data.calificaciones.general.estrellas_5, color: "#10b981" },
+                        { stars: 4, count: data.calificaciones.general.estrellas_4, color: "#84cc16" },
+                        { stars: 3, count: data.calificaciones.general.estrellas_3, color: "#f59e0b" },
+                        { stars: 2, count: data.calificaciones.general.estrellas_2, color: "#f97316" },
+                        { stars: 1, count: data.calificaciones.general.estrellas_1, color: "#ef4444" },
+                      ].map(({ stars, count, color }) => {
+                        const total = data.calificaciones.general.calificados;
+                        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                        return (
+                          <div key={stars} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "13px", color, fontWeight: "bold", minWidth: "28px" }}>
+                              {stars}★
+                            </span>
+                            <div style={{ flex: 1, height: "10px", backgroundColor: isDark ? "#334155" : "#e2e8f0", borderRadius: "5px", overflow: "hidden" }}>
+                              <div style={{ width: `${pct}%`, height: "100%", backgroundColor: color, borderRadius: "5px", transition: "width 0.3s" }} />
+                            </div>
+                            <span style={{ fontSize: "12px", color: isDark ? "#94a3b8" : "#64748b", minWidth: "60px", textAlign: "right" }}>
+                              {count} ({pct}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Tabla unificada por agente (tickets + calificaciones) ── */}
+                <div className="card" style={{ marginBottom: "20px" }}>
+                  <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
+                    Desempeño y Satisfacción por Agente
+                  </h3>
+                  {agentesUnificados.length === 0 ? (
+                    <p style={{ color: "#6b7280", textAlign: "center", padding: "20px 0" }}>
+                      No hay agentes registrados.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                        <thead>
+                          <tr style={{ backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }}>
+                            {[
+                              "Agente",
+                              "Total", "Abiertos", "En progreso", "Cerrados", "Prom. resol.",
+                              "Calif.", "Promedio ★", "% Satisf.",
+                              "1★", "2★", "3★", "4★", "5★"
+                            ].map(h => (
+                              <th key={h} style={{
+                                padding: "9px 10px", textAlign: "left", fontSize: "11px",
+                                color: isDark ? "#94a3b8" : "#475569", fontWeight: "600",
+                                borderBottom: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+                                whiteSpace: "nowrap"
+                              }}>
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {agentesUnificados.map((a: any, i: number) => (
+                            <tr key={a.agente_id} style={{
+                              backgroundColor: i % 2 === 0
+                                ? (isDark ? "transparent" : "white")
+                                : (isDark ? "#1e293b" : "#f8fafc")
+                            }}>
+                              <td style={{ padding: "9px 10px", fontWeight: "600", color: isDark ? "#f1f5f9" : "#1e293b", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}` }}>
+                                {a.agente}
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}`, color: isDark ? "#cbd5e1" : undefined }}>
+                                {a.total ?? "—"}
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}` }}>
+                                <span style={{ color: "#ef4444", fontWeight: "bold" }}>{a.abiertos ?? "—"}</span>
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}` }}>
+                                <span style={{ color: "#f59e0b", fontWeight: "bold" }}>{a.en_progreso ?? "—"}</span>
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}` }}>
+                                <span style={{ color: "#10b981", fontWeight: "bold" }}>{a.cerrados ?? "—"}</span>
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}`, color: "#6366f1", fontWeight: "bold" }}>
+                                {a.avg_resolucion_horas != null ? `${a.avg_resolucion_horas} h` : "—"}
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}`, color: isDark ? "#cbd5e1" : undefined }}>
+                                {a.total_calificaciones}
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}` }}>
+                                {a.promedio_calificacion !== null ? (
+                                  <span style={{ color: "#f59e0b", fontWeight: "bold" }}>
+                                    {[1,2,3,4,5].map(s => (
+                                      <span key={s} style={{ color: s <= Math.round(Number(a.promedio_calificacion)) ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db"), fontSize: "13px" }}>★</span>
+                                    ))}
+                                    {" "}{a.promedio_calificacion}/5
+                                  </span>
+                                ) : (
+                                  <span style={{ color: isDark ? "#64748b" : "#94a3b8", fontSize: "12px" }}>—</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}` }}>
+                                {a.pct_satisfaccion !== null ? (
+                                  <span style={{
+                                    color: Number(a.pct_satisfaccion) >= 80 ? "#10b981" : Number(a.pct_satisfaccion) >= 50 ? "#f59e0b" : "#ef4444",
+                                    fontWeight: "bold"
+                                  }}>
+                                    {a.pct_satisfaccion}%
+                                  </span>
+                                ) : (
+                                  <span style={{ color: isDark ? "#64748b" : "#94a3b8", fontSize: "12px" }}>—</span>
+                                )}
+                              </td>
+                              {[a.estrellas_1, a.estrellas_2, a.estrellas_3, a.estrellas_4, a.estrellas_5].map((v: number, idx: number) => (
+                                <td key={idx} style={{ padding: "9px 10px", borderBottom: `1px solid ${isDark ? "#1e293b" : "#f1f5f9"}`, color: isDark ? "#94a3b8" : "#64748b", textAlign: "center" }}>
+                                  {v ?? 0}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
           </>
         ) : null}
       </div>

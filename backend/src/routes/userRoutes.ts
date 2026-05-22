@@ -9,6 +9,11 @@ router.post('/register', userController.register);
 router.post('/login', userController.login);
 router.post('/refresh-token', authMiddleware, userController.refreshToken);
 
+// Recuperación de contraseña (sin middleware — rutas públicas)
+router.post('/forgot-password', userController.forgotPassword);
+router.get('/verify-reset-token', userController.verifyResetToken);
+router.post('/reset-password', userController.resetPassword);
+
 // Rutas protegidas
 router.get('/profile', authMiddleware, userController.getProfile);
 router.get('/', authMiddleware, adminOnly, userController.getUsers);

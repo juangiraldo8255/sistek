@@ -73,6 +73,15 @@ function Login() {
             {loading ? "Cargando..." : "Ingresar"}
           </button>
 
+          <p className="link" style={{ marginTop: "10px" }}>
+            <span
+              onClick={() => navigate("/forgot-password")}
+              style={{ color: "#2563eb", cursor: "pointer", fontSize: "13px" }}
+            >
+              ¿Olvidaste tu contraseña?
+            </span>
+          </p>
+
           <p className="link">
             ¿No tienes cuenta?{" "}
             <span onClick={() => navigate("/register")} style={{color:"#2563eb", cursor:"pointer"}}>

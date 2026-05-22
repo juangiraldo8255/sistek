@@ -203,5 +203,45 @@ export const authService = {
     });
     if (!response.ok) throw new Error('Error fetching agents');
     return response.json();
-  }
+  },
+
+  // Solicitar recuperación de contraseña
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/users/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error);
+    }
+    return response.json();
+  },
+
+  // Verificar si un token de recuperación es válido (sin consumirlo)
+  async verifyResetToken(token: string): Promise<{ valid: boolean; reason?: string }> {
+    const response = await fetch(
+      `${API_URL}/users/verify-reset-token?token=${encodeURIComponent(token)}`
+    );
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { valid: false, reason: data.reason ?? 'invalid' };
+    }
+    return response.json();
+  },
+
+  // Restablecer contraseña con token válido
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/users/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error);
+    }
+    return response.json();
+  },
 };

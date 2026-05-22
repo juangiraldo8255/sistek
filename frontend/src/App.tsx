@@ -5,9 +5,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Tickets from './pages/Tickets';
-import CreateTicket from './pages/CreateTicket';
 import AdminTickets from './pages/AdminTickets';
 import Reports from './pages/Reports';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -18,9 +19,10 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tickets" element={<Tickets />} />
-          <Route path="/create-ticket" element={<CreateTicket />} />
           <Route path="/admin-tickets" element={<AdminTickets />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

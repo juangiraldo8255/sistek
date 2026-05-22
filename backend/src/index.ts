@@ -14,6 +14,8 @@ import { createNotificationsTable } from './services/notificationService';
 import { migratePrioritiesToNewValues, createTicketHistoriaTable } from './services/ticketService';
 import { createCommentsTable } from './services/commentService';
 import { createAttachmentsTable } from './services/attachmentService';
+import { createRatingsTable } from './services/ratingService';
+import { createPasswordResetTable } from './services/passwordResetService';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -39,7 +41,7 @@ app.get('/test-db', async (req, res) => {
     const result = await pool.query('SELECT NOW()');
     res.json({ message: 'DB connected', time: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -69,6 +71,14 @@ createCommentsTable()
 createAttachmentsTable()
   .then(() => console.log('✅ Tabla attachments lista'))
   .catch((err) => console.error('❌ Error creando tabla attachments:', err));
+
+createRatingsTable()
+  .then(() => console.log('✅ Tabla ticket_ratings lista'))
+  .catch((err) => console.error('❌ Error creando tabla ticket_ratings:', err));
+
+createPasswordResetTable()
+  .then(() => console.log('✅ Tabla password_reset_tokens lista'))
+  .catch((err) => console.error('❌ Error creando tabla password_reset_tokens:', err));
 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

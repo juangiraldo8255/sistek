@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ticketService, Ticket, PRIORIDADES, PrioridadTicket, PRIORIDAD_ORDEN } from "../services/ticketService";
 import { commentService, Comment } from "../services/commentService";
+import { ratingService, Rating } from "../services/ratingService";
 import { authService } from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 import ReopenModal from "../components/ReopenModal";
@@ -9,6 +10,9 @@ import AttachmentSection from "../components/AttachmentSection";
 import "../styles.css";
 
 function Tickets() {
+
+  // Tracking de IDs de tickets cerrados ya cargados para evitar N+1 en el polling
+  const loadedRatingIds = useRef<Set<number>>(new Set());
 
   const [user, setUser] = useState<any>(null);
   const [title, setTitle] = useState("");
@@ -30,6 +34,64 @@ const [loadingHistorial, setLoadingHistorial] = useState(false);
 
 // ESTADO MODAL REAPERTURA (HU-019)
 const [reopenTicket, setReopenTicket] = useState<Ticket | null>(null);
+
+// ESTADOS DE CALIFICACIÓN (HU-021)
+const [ratings, setRatings] = useState<{ [ticketId: number]: Rating | null }>({});
+const [showRatingId, setShowRatingId] = useState<number | null>(null);
+const [ratingPuntuacion, setRatingPuntuacion] = useState<{ [ticketId: number]: number }>({});
+const [ratingComentario, setRatingComentario] = useState<{ [ticketId: number]: string }>({});
+const [ratingError, setRatingError] = useState<{ [ticketId: number]: string }>({});
+const [ratingSuccess, setRatingSuccess] = useState<{ [ticketId: number]: boolean }>({});
+const [enviandoRating, setEnviandoRating] = useState(false);
+
+const EXPIRY_DAYS = 7;
+
+const isRatingExpired = (ticket: Ticket): boolean => {
+  if (ticket.status !== "Cerrado") return false;
+  const closedAt = new Date(ticket.updated_at);
+  const diffDays = (Date.now() - closedAt.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays > EXPIRY_DAYS;
+};
+
+const cargarRatings = async (cerrados: Ticket[]) => {
+  // Solo cargar tickets cuya calificación no haya sido pedida antes.
+  // Esto evita N peticiones por ciclo en el polling de 5 s.
+  const nuevos = cerrados.filter(t => !loadedRatingIds.current.has(t.id));
+  if (nuevos.length === 0) return;
+
+  const map: { [id: number]: Rating | null } = {};
+  await Promise.all(
+    nuevos.map(async (t) => {
+      try {
+        map[t.id] = await ratingService.getRating(t.id);
+        loadedRatingIds.current.add(t.id);
+      } catch {
+        map[t.id] = null;
+      }
+    })
+  );
+  setRatings(prev => ({ ...prev, ...map }));
+};
+
+const enviarRating = async (ticketId: number) => {
+  const puntuacion = ratingPuntuacion[ticketId];
+  if (!puntuacion || puntuacion < 1 || puntuacion > 5) {
+    setRatingError(prev => ({ ...prev, [ticketId]: "Debes seleccionar una puntuación del 1 al 5" }));
+    return;
+  }
+  try {
+    setEnviandoRating(true);
+    setRatingError(prev => ({ ...prev, [ticketId]: "" }));
+    const rating = await ratingService.rateTicket(ticketId, puntuacion, ratingComentario[ticketId]);
+    setRatings(prev => ({ ...prev, [ticketId]: rating }));
+    setRatingSuccess(prev => ({ ...prev, [ticketId]: true }));
+    setShowRatingId(null);
+  } catch (err: any) {
+    setRatingError(prev => ({ ...prev, [ticketId]: err.message }));
+  } finally {
+    setEnviandoRating(false);
+  }
+};
 
 // ESTADOS DE COMENTARIOS
 const [showCommentsId, setShowCommentsId] = useState<number | null>(null);
@@ -121,6 +183,11 @@ const verHistorial = async (ticketId: number) => {
     try {
       const miTickets = await ticketService.getMyTickets();
       setTickets(miTickets);
+      const userData = authService.getCurrentUser();
+      if (userData?.role === "cliente") {
+        const cerrados = miTickets.filter(t => t.status === "Cerrado");
+        await cargarRatings(cerrados);
+      }
     } catch (err: any) {
       console.error("Error cargando tickets:", err.message);
     }
@@ -421,6 +488,131 @@ const verHistorial = async (ticketId: number) => {
                     >
                       🔄 Reabrir Ticket
                     </button>
+                  </div>
+                )}
+
+                {/* CALIFICACIÓN (HU-021) – solo si está cerrado */}
+                {ticket.status === "Cerrado" && (
+                  <div style={{ marginTop: "10px", borderTop: `1px dashed ${dk.divider}`, paddingTop: "10px" }}>
+                    {/* Ya calificado */}
+                    {ratings[ticket.id] ? (
+                      <div style={{
+                        backgroundColor: isDark ? "#162032" : "#f0fdf4",
+                        border: `1px solid ${isDark ? "#1e4a2e" : "#86efac"}`,
+                        borderRadius: "6px", padding: "10px 14px",
+                        display: "flex", alignItems: "center", gap: "10px"
+                      }}>
+                        <span style={{ fontSize: "18px" }}>
+                          {[1,2,3,4,5].map(s => (
+                            <span key={s} style={{ color: s <= ratings[ticket.id]!.puntuacion ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db") }}>★</span>
+                          ))}
+                        </span>
+                        <span style={{ fontSize: "13px", color: isDark ? "#86efac" : "#166534" }}>
+                          Calificaste este ticket con {ratings[ticket.id]!.puntuacion}/5
+                          {ratings[ticket.id]!.comentario && ` · "${ratings[ticket.id]!.comentario}"`}
+                        </span>
+                      </div>
+                    ) : isRatingExpired(ticket) ? (
+                      /* Plazo expirado */
+                      <div style={{
+                        backgroundColor: isDark ? "#1c1408" : "#fffbeb",
+                        border: `1px solid ${isDark ? "#78350f" : "#fcd34d"}`,
+                        borderRadius: "6px", padding: "10px 14px",
+                        fontSize: "13px", color: isDark ? "#fcd34d" : "#92400e"
+                      }}>
+                        ⏰ El plazo para calificar este ticket ha expirado (más de {EXPIRY_DAYS} días desde el cierre).
+                      </div>
+                    ) : (
+                      /* Formulario de calificación */
+                      <>
+                        <button
+                          onClick={() => setShowRatingId(showRatingId === ticket.id ? null : ticket.id)}
+                          style={{
+                            background: "none", border: "none",
+                            color: isDark ? "#fbbf24" : "#d97706",
+                            fontSize: "13px", fontWeight: "bold",
+                            cursor: "pointer", padding: "0",
+                            display: "flex", alignItems: "center", gap: "5px"
+                          }}
+                        >
+                          {showRatingId === ticket.id ? "▲ Ocultar calificación" : "⭐ Calificar atención"}
+                        </button>
+
+                        {showRatingId === ticket.id && (
+                          <div style={{
+                            marginTop: "10px",
+                            backgroundColor: dk.expanded,
+                            padding: "14px",
+                            borderRadius: "6px",
+                            border: `1px solid ${dk.expandedBorder}`
+                          }}>
+                            <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: dk.label, fontWeight: "600" }}>
+                              ¿Cómo calificarías la atención recibida?
+                            </p>
+
+                            {/* Estrellas interactivas */}
+                            <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
+                              {[1,2,3,4,5].map(star => (
+                                <button
+                                  key={star}
+                                  onClick={() => setRatingPuntuacion(prev => ({ ...prev, [ticket.id]: star }))}
+                                  style={{
+                                    background: "none", border: "none",
+                                    fontSize: "28px", cursor: "pointer", padding: "0",
+                                    color: star <= (ratingPuntuacion[ticket.id] || 0) ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db"),
+                                    transition: "color 0.1s"
+                                  }}
+                                  title={`${star} estrella${star > 1 ? "s" : ""}`}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                              {ratingPuntuacion[ticket.id] > 0 && (
+                                <span style={{ fontSize: "13px", color: dk.textSub, alignSelf: "center", marginLeft: "4px" }}>
+                                  {ratingPuntuacion[ticket.id]}/5
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Comentario opcional */}
+                            <textarea
+                              value={ratingComentario[ticket.id] || ""}
+                              onChange={e => setRatingComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                              placeholder="Comentario opcional (¿qué podemos mejorar?)"
+                              style={{
+                                width: "100%", padding: "8px",
+                                border: `1px solid ${dk.inputBorder}`,
+                                borderRadius: "4px", fontSize: "13px",
+                                resize: "vertical", minHeight: "56px",
+                                boxSizing: "border-box",
+                                backgroundColor: dk.input, color: dk.text
+                              }}
+                            />
+
+                            {ratingError[ticket.id] && (
+                              <p style={{ fontSize: "12px", color: "#ef4444", margin: "6px 0 0 0" }}>
+                                {ratingError[ticket.id]}
+                              </p>
+                            )}
+
+                            <button
+                              onClick={() => enviarRating(ticket.id)}
+                              disabled={enviandoRating || !ratingPuntuacion[ticket.id]}
+                              style={{
+                                marginTop: "8px",
+                                backgroundColor: (enviandoRating || !ratingPuntuacion[ticket.id]) ? "#94a3b8" : "#f59e0b",
+                                color: "white",
+                                padding: "7px 18px", border: "none",
+                                borderRadius: "4px", cursor: (enviandoRating || !ratingPuntuacion[ticket.id]) ? "not-allowed" : "pointer",
+                                fontSize: "13px", fontWeight: "bold"
+                              }}
+                            >
+                              {enviandoRating ? "Enviando..." : "Enviar calificación"}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
 
