@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ticketService, Ticket, PRIORIDADES, PrioridadTicket, PRIORIDAD_ORDEN } from "../services/ticketService";
 import { commentService, Comment } from "../services/commentService";
 import { authService } from "../services/authService";
+import { useTheme } from "../context/ThemeContext";
+import ReopenModal from "../components/ReopenModal";
 import "../styles.css";
 
 function AdminTickets() {
@@ -143,7 +145,35 @@ function AdminTickets() {
     authService.logout();
     navigate("/");
   };
-  
+
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+
+  // Paleta reutilizable para ticket cards en modo oscuro
+  const dk = {
+    card:          isDark ? "#1e1e1e"   : "#fafafa",
+    cardBorder:    isDark ? "#334155"   : "#e5e7eb",
+    text:          isDark ? "#f5f5f5"   : "#1f2937",
+    textSub:       isDark ? "#aaaaaa"   : "#666",
+    label:         isDark ? "#aaaaaa"   : "#374151",
+    panelPriority: isDark ? "#2a1f18"   : "#fff7ed",
+    labelPriority: isDark ? "#fb923c"   : "#9a3412",
+    panelEstado:   isDark ? "#172520"   : "#f9fafb",
+    labelEstado:   isDark ? "#34d399"   : "#047857",
+    panelAssign:   isDark ? "#161e2e"   : "#f0f9ff",
+    labelAssign:   isDark ? "#93c5fd"   : "#1e40af",
+    input:         isDark ? "#0f172a"   : "white",
+    inputBorder:   isDark ? "#475569"   : "#d1d5db",
+    divider:       isDark ? "#334155"   : "#f3f4f6",
+    expanded:      isDark ? "#121212"   : "#ffffff",
+    expandedBorder:isDark ? "#334155"   : "#e5e7eb",
+    histBtn:       isDark ? "#93c5fd"   : "#2563eb",
+    commentBtn:    isDark ? "#c4b5fd"   : "#7c3aed",
+    badgeBg:       isDark ? "#263248"   : "#f3f4f6",
+  };
+
+  // ESTADO MODAL REAPERTURA (HU-019)
+  const [reopenTarget, setReopenTarget] = useState<Ticket | null>(null);
 
   const verHistorial = async (ticketId: number) => {
   // Si el usuario hace clic en el que ya está abierto, lo cerramos
@@ -234,6 +264,21 @@ function AdminTickets() {
 
   return (
     <div className="dashboard-container">
+
+      {/* MODAL REAPERTURA (HU-019) */}
+      {reopenTarget && (
+        <ReopenModal
+          ticket={reopenTarget}
+          userRole="administrador"
+          onConfirm={async (motivo) => {
+            await ticketService.reopenTicket(reopenTarget.id, motivo);
+            setReopenTarget(null);
+            await cargarDatos();
+          }}
+          onClose={() => setReopenTarget(null)}
+        />
+      )}
+
       <div className="sidebar">
         <h2>Sistek</h2>
         <button onClick={() => navigate("/dashboard")}>Inicio</button>
@@ -241,6 +286,9 @@ function AdminTickets() {
           Todos los Tickets
         </button>
         <button onClick={() => navigate("/reports")}>Reportes</button>
+        <button onClick={toggleTheme} style={{ marginTop: "auto" }}>
+          {theme === "dark" ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
+        </button>
         <button onClick={logout}>Cerrar sesión</button>
       </div>
 
@@ -413,11 +461,11 @@ function AdminTickets() {
     <div
       key={ticket.id}
       style={{
-        border: "2px solid #e5e7eb",
+        border: `2px solid ${dk.cardBorder}`,
         borderRadius: "8px",
         padding: "15px",
-        backgroundColor: "#fafafa",
-        position: "relative" 
+        backgroundColor: dk.card,
+        position: "relative"
       }}
     >
       <div style={{ 
@@ -431,17 +479,17 @@ function AdminTickets() {
       </div>
 
       <div style={{ marginBottom: "12px" }}>
-        <h4 style={{ margin: "0 0 5px 0", color: "#1f2937", fontSize: "16px" }}>
+        <h4 style={{ margin: "0 0 5px 0", color: dk.text, fontSize: "16px" }}>
           #{ticket.id} - {ticket.title}
         </h4>
-                    <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#666" }}>
-                      {ticket.description}
-                    </p>
-                  </div>
+        <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: dk.textSub }}>
+          {ticket.description}
+        </p>
+      </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "15px", marginBottom: "12px", fontSize: "13px" }}>
                     <div>
-                      <strong style={{ color: "#374151" }}>Estado:</strong>
+                      <strong style={{ color: dk.label }}>Estado:</strong>
                       <div style={{
                         padding: "4px 8px",
                         backgroundColor: 
@@ -462,7 +510,7 @@ function AdminTickets() {
                     </div>
 
                     <div>
-                      <strong style={{ color: "#374151" }}>Prioridad:</strong>
+                      <strong style={{ color: dk.label }}>Prioridad:</strong>
                       <div style={{
                         padding: "4px 8px",
                         backgroundColor:
@@ -483,11 +531,11 @@ function AdminTickets() {
                     </div>
 
                     <div>
-                      <strong style={{ color: "#374151" }}>Tipo:</strong>
+                      <strong style={{ color: dk.label }}>Tipo:</strong>
                       <div style={{
                         padding: "4px 8px",
-                        backgroundColor: "#f3f4f6",
-                        color: "#374151",
+                        backgroundColor: dk.badgeBg,
+                        color: dk.label,
                         borderRadius: "4px",
                         fontSize: "12px",
                         fontWeight: "bold",
@@ -499,15 +547,15 @@ function AdminTickets() {
                   </div>
 
                   {/* CAMBIAR PRIORIDAD */}
-                  <div style={{ backgroundColor: "#fff7ed", padding: "12px", borderRadius: "6px", marginBottom: "10px", borderLeft: "4px solid #f97316" }}>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: "#9a3412", marginBottom: "8px" }}>
+                  <div style={{ backgroundColor: dk.panelPriority, padding: "12px", borderRadius: "6px", marginBottom: "10px", borderLeft: "4px solid #f97316" }}>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: dk.labelPriority, marginBottom: "8px" }}>
                       Cambiar Prioridad:
                     </label>
                     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                       <select
                         value={prioridadSeleccionada[ticket.id] ?? ""}
                         onChange={(e) => setPrioridadSeleccionada(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                        style={{ padding: "8px", border: "1px solid #fed7aa", borderRadius: "4px", fontSize: "13px", flex: 1, backgroundColor: "white", cursor: "pointer" }}
+                        style={{ padding: "8px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", fontSize: "13px", flex: 1, backgroundColor: dk.input, color: dk.text, cursor: "pointer" }}
                       >
                         <option value="">Selecciona prioridad...</option>
                         {PRIORIDADES.filter(p => p !== ticket.priority).map(p => (
@@ -538,26 +586,27 @@ function AdminTickets() {
                   </div>
 
                   {/* --- SECCIÓN PARA CAMBIAR ESTADO (HU-007) --- */}
-<div style={{ 
-  backgroundColor: "#f9fafb", 
-  padding: "12px", 
-  borderRadius: "6px", 
-  marginBottom: "10px", 
-  borderLeft: "4px solid #10b981" 
+<div style={{
+  backgroundColor: dk.panelEstado,
+  padding: "12px",
+  borderRadius: "6px",
+  marginBottom: "10px",
+  borderLeft: "4px solid #10b981"
 }}>
-  <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: "#047857", marginBottom: "8px" }}>
+  <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: dk.labelEstado, marginBottom: "8px" }}>
     Gestionar Estado del Ticket:
   </label>
-  <select 
+  <select
     value={ticket.status}
     onChange={(e) => cambiarEstado(ticket.id, e.target.value as 'Abierto' | 'En progreso' | 'Cerrado')}
     style={{
       width: "100%",
       padding: "8px",
       borderRadius: "4px",
-      border: "1px solid #d1d5db",
+      border: `1px solid ${dk.inputBorder}`,
       fontSize: "13px",
-      backgroundColor: "white",
+      backgroundColor: dk.input,
+      color: dk.text,
       cursor: "pointer"
     }}
   >
@@ -568,8 +617,8 @@ function AdminTickets() {
 </div>
 
                   {ticket.status !== "Cerrado" && (
-                    <div style={{ backgroundColor: "#f0f9ff", padding: "12px", borderRadius: "6px", marginBottom: "10px", borderLeft: "4px solid #3b82f6" }}>
-                      <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: "#1e40af", marginBottom: "8px" }}>
+                    <div style={{ backgroundColor: dk.panelAssign, padding: "12px", borderRadius: "6px", marginBottom: "10px", borderLeft: "4px solid #3b82f6" }}>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: dk.labelAssign, marginBottom: "8px" }}>
                         Asignar a Agente:
                       </label>
                       <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
@@ -583,12 +632,13 @@ function AdminTickets() {
                           }}
                           style={{
                             padding: "8px",
-                            border: "1px solid #bfdbfe",
+                            border: `1px solid ${dk.inputBorder}`,
                             borderRadius: "4px",
                             fontSize: "13px",
                             cursor: "pointer",
                             flex: 1,
-                            backgroundColor: "white"
+                            backgroundColor: dk.input,
+                            color: dk.text
                           }}
                         >
                           <option value="">Selecciona un agente...</option>
@@ -621,7 +671,7 @@ function AdminTickets() {
                           {loadingAssign === ticket.id ? "Asignando..." : "Asignar"}
                         </button>
                         {ticket.assigned_agent_id && (
-                          <div style={{ fontSize: "12px", color: "#0369a1", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: "12px", color: dk.labelAssign, whiteSpace: "nowrap" }}>
                             ✓ Asignado
                           </div>
                         )}
@@ -629,15 +679,25 @@ function AdminTickets() {
                     </div>
                   )}
 
-                  <div style={{ fontSize: "12px", color: "#6b7280", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "12px", color: dk.textSub, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                     <span>Creado: {new Date(ticket.created_at).toLocaleString()}</span>
                     <span>Cliente ID: {ticket.user_id}</span>
-                    <button
-                      onClick={() => eliminarTicket(ticket.id)}
-                      style={{ backgroundColor: "#ef4444", color: "white", padding: "4px 12px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
-                    >
-                      Eliminar
-                    </button>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {ticket.status === "Cerrado" && (
+                        <button
+                          onClick={() => setReopenTarget(ticket)}
+                          style={{ backgroundColor: "#6366f1", color: "white", padding: "4px 12px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                        >
+                          🔄 Reabrir
+                        </button>
+                      )}
+                      <button
+                        onClick={() => eliminarTicket(ticket.id)}
+                        style={{ backgroundColor: "#ef4444", color: "white", padding: "4px 12px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                   {/* --- BOTÓN Y VISTA DE HISTORIAL (HU-007) --- */}
 <div style={{ marginTop: "15px", borderTop: "1px dashed #ccc", paddingTop: "10px" }}>
@@ -646,7 +706,7 @@ function AdminTickets() {
     style={{
       background: "none",
       border: "none",
-      color: "#2563eb",
+      color: dk.histBtn,
       fontSize: "13px",
       fontWeight: "bold",
       cursor: "pointer",
@@ -662,36 +722,38 @@ function AdminTickets() {
   {showHistorialId === ticket.id && (
     <div style={{
       marginTop: "10px",
-      backgroundColor: "#ffffff",
+      backgroundColor: dk.expanded,
       padding: "10px",
       borderRadius: "6px",
-      border: "1px solid #e5e7eb",
+      border: `1px solid ${dk.expandedBorder}`,
       maxHeight: "200px",
       overflowY: "auto"
     }}>
       {historialSelected.length === 0 ? (
-        <p style={{ fontSize: "12px", color: "#6b7280", textAlign: "center" }}>No hay registros aún.</p>
+        <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center" }}>No hay registros aún.</p>
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {historialSelected.map((h, index) => (
             <li key={index} style={{
               fontSize: "12px",
               padding: "8px 0",
-              borderBottom: index !== historialSelected.length - 1 ? "1px solid #f3f4f6" : "none"
+              borderBottom: index !== historialSelected.length - 1 ? `1px solid ${dk.divider}` : "none"
             }}>
-              <div style={{ color: "#374151", fontWeight: "600" }}>
+              <div style={{ color: dk.text, fontWeight: "600" }}>
                 {h.tipo_accion === 'status_change'
                   ? '🔄 Cambio de Estado'
                   : h.tipo_accion === 'priority_change'
                   ? '🎯 Cambio de Prioridad'
+                  : h.tipo_accion === 'reopen'
+                  ? '🔄 Reapertura'
                   : '👤 Asignación de Agente'}
               </div>
-              <div style={{ color: "#4b5563" }}>
-                {h.tipo_accion === 'status_change' || h.tipo_accion === 'priority_change'
+              <div style={{ color: dk.label }}>
+                {h.tipo_accion === 'status_change' || h.tipo_accion === 'priority_change' || h.tipo_accion === 'reopen'
                   ? `De "${h.valor_anterior}" a "${h.valor_nuevo}"`
                   : `Asignado a Agente ID: ${h.valor_nuevo}`}
               </div>
-              <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>
+              <div style={{ fontSize: "11px", color: dk.textSub, marginTop: "2px" }}>
                 {new Date(new Date(h.fecha_registro + (h.fecha_registro.includes('Z') ? '' : 'Z')).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-ES', { hour12: false })} • Por Usuario ID: {h.usuario_accion_id}
               </div>
             </li>
@@ -706,27 +768,27 @@ function AdminTickets() {
                   <div style={{ marginTop: "10px", borderTop: "1px dashed #d1d5db", paddingTop: "10px" }}>
                     <button
                       onClick={() => verComentarios(ticket.id)}
-                      style={{ background: "none", border: "none", color: "#7c3aed", fontSize: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", padding: "0" }}
+                      style={{ background: "none", border: "none", color: dk.commentBtn, fontSize: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", padding: "0" }}
                     >
                       {showCommentsId === ticket.id ? "▲ Ocultar Comentarios" : "▼ Ver Comentarios"}
                       {loadingComentarios && showCommentsId === ticket.id && " (Cargando...)"}
                     </button>
 
                     {showCommentsId === ticket.id && (
-                      <div style={{ marginTop: "10px", backgroundColor: "#fff", padding: "12px", borderRadius: "6px", border: "1px solid #e5e7eb" }}>
+                      <div style={{ marginTop: "10px", backgroundColor: dk.expanded, padding: "12px", borderRadius: "6px", border: `1px solid ${dk.expandedBorder}` }}>
                         {comentarios.length === 0 ? (
-                          <p style={{ fontSize: "12px", color: "#6b7280", textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún.</p>
+                          <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún.</p>
                         ) : (
                           <div style={{ marginBottom: "12px", maxHeight: "220px", overflowY: "auto" }}>
                             {comentarios.map((c) => (
-                              <div key={c.id} style={{ padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
+                              <div key={c.id} style={{ padding: "8px 0", borderBottom: `1px solid ${dk.divider}` }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                                  <span style={{ fontSize: "12px", fontWeight: "bold", color: "#374151" }}>{c.autor}</span>
-                                  <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+                                  <span style={{ fontSize: "12px", fontWeight: "bold", color: dk.text }}>{c.autor}</span>
+                                  <span style={{ fontSize: "11px", color: dk.textSub }}>
                                     {new Date(c.created_at).toLocaleString('es-ES', { hour12: false })}
                                   </span>
                                 </div>
-                                <p style={{ margin: "0", fontSize: "13px", color: "#4b5563" }}>{c.content}</p>
+                                <p style={{ margin: "0", fontSize: "13px", color: dk.label }}>{c.content}</p>
                               </div>
                             ))}
                           </div>

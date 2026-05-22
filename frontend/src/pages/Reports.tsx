@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import { authService } from "../services/authService";
 import { reportService, ReportData, ReportFilters } from "../services/reportService";
+import { useTheme } from "../context/ThemeContext";
 import "../styles.css";
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -21,17 +22,19 @@ const PRIORIDAD_COLORS: Record<string, string> = {
 };
 
 function MetricCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   return (
     <div style={{
       padding: "18px 20px",
-      backgroundColor: "#f8fafc",
+      backgroundColor: isDark ? "#1e1e1e" : "#f8fafc",
       borderRadius: "8px",
-      border: "1px solid #e2e8f0",
+      border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
       minWidth: "130px",
     }}>
-      <p style={{ fontSize: "11px", color: "#64748b", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
-      <h2 style={{ margin: "0", fontSize: "26px", color: "#1e293b" }}>{value ?? "—"}</h2>
-      {sub && <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0 0 0" }}>{sub}</p>}
+      <p style={{ fontSize: "11px", color: isDark ? "#aaaaaa" : "#64748b", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+      <h2 style={{ margin: "0", fontSize: "26px", color: isDark ? "#f5f5f5" : "#1e293b" }}>{value ?? "—"}</h2>
+      {sub && <p style={{ fontSize: "11px", color: isDark ? "#888888" : "#94a3b8", margin: "4px 0 0 0" }}>{sub}</p>}
     </div>
   );
 }
@@ -115,6 +118,14 @@ function Reports() {
 
   const logout = () => { authService.logout(); navigate("/"); };
 
+  const { theme, toggleTheme } = useTheme();
+
+  const isDark      = theme === "dark";
+  const axisColor   = isDark ? "#aaaaaa" : "#6b7280";
+  const gridColor   = isDark ? "#334155" : "#e5e7eb";
+  const tooltipBg   = isDark ? "#1e293b" : "#ffffff";
+  const tooltipText = isDark ? "#f5f5f5" : "#374151";
+
   if (!user) return null;
 
   // Datos para los gráficos
@@ -147,6 +158,9 @@ function Reports() {
         <button onClick={() => navigate("/admin-tickets")}>Todos los Tickets</button>
         <button onClick={() => navigate("/reports")} style={{ backgroundColor: "#6366f1", color: "white" }}>
           Reportes
+        </button>
+        <button onClick={toggleTheme} style={{ marginTop: "auto" }}>
+          {theme === "dark" ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
         </button>
         <button onClick={logout}>Cerrar sesión</button>
       </div>
@@ -323,10 +337,10 @@ function Reports() {
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={dataPorEstado} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" fontSize={12} />
-                      <YAxis fontSize={12} allowDecimals={false} />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                      <XAxis dataKey="name" fontSize={12} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                      <YAxis fontSize={12} allowDecimals={false} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                      <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${gridColor}`, color: tooltipText }} labelStyle={{ color: tooltipText }} />
                       <Bar dataKey="value" name="Tickets" radius={[4, 4, 0, 0]}>
                         {dataPorEstado.map((entry, i) => (
                           <Cell key={i} fill={entry.fill} />
@@ -347,11 +361,11 @@ function Reports() {
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={dataPorAgente} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" fontSize={11} />
-                      <YAxis fontSize={12} allowDecimals={false} />
-                      <Tooltip />
-                      <Legend fontSize={11} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                      <XAxis dataKey="name" fontSize={11} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                      <YAxis fontSize={12} allowDecimals={false} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                      <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${gridColor}`, color: tooltipText }} labelStyle={{ color: tooltipText }} />
+                      <Legend fontSize={11} wrapperStyle={{ color: axisColor }} />
                       <Bar dataKey="Cerrados"      fill="#10b981" radius={[2, 2, 0, 0]} stackId="a" />
                       <Bar dataKey="En progreso"   fill="#f59e0b" radius={[2, 2, 0, 0]} stackId="a" />
                       <Bar dataKey="Abiertos"      fill="#ef4444" radius={[2, 2, 0, 0]} stackId="a" />

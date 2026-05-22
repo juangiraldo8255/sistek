@@ -135,3 +135,272 @@ button:hover {
 .prioridad-baja {
   border-left: 6px solid #22c55e;
 }
+
+/* ============================================================
+   HU-018 – MODO OSCURO
+   Anexo: NO modifica estilos anteriores.
+   Usa :root.dark para sobreescribir con !important.
+   ============================================================ */
+
+/* Base */
+:root.dark body {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+/* Páginas de autenticación */
+:root.dark .right-panel {
+  background: #1e293b !important;
+}
+
+:root.dark .left-panel {
+  background: #1d4ed8 !important;
+}
+
+:root.dark .form-box h2 {
+  color: #f1f5f9 !important;
+}
+
+/* Layout del dashboard */
+:root.dark .dashboard-container {
+  background: #0f172a !important;
+}
+
+:root.dark .main-content {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+/* Sidebar */
+:root.dark .sidebar {
+  background: #172554 !important;
+}
+
+/* Cards y formularios */
+:root.dark .card,
+:root.dark .ticket-form {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Inputs, textareas y selects */
+:root.dark input,
+:root.dark textarea,
+:root.dark select {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+
+:root.dark input::placeholder,
+:root.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Tipografía */
+:root.dark h1,
+:root.dark h2,
+:root.dark h3,
+:root.dark h4,
+:root.dark h5,
+:root.dark h6 {
+  color: #f1f5f9 !important;
+}
+
+:root.dark p {
+  color: #cbd5e1 !important;
+}
+
+:root.dark label {
+  color: #94a3b8 !important;
+}
+
+:root.dark strong {
+  color: #e2e8f0 !important;
+}
+
+:root.dark li {
+  color: #cbd5e1 !important;
+}
+
+/* Tablas (Reportes) */
+:root.dark table {
+  border-color: #334155 !important;
+}
+
+:root.dark th {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+:root.dark td {
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+:root.dark tr:nth-child(even) td {
+  background-color: #1a2540 !important;
+}
+
+/* Items de tickets (hijos directos de .card) */
+:root.dark .card > div {
+  background-color: #263248 !important;
+  border-color: #334155 !important;
+}
+
+/* Sub-paneles dentro de los ticket items */
+:root.dark .card > div > div {
+  background-color: #1e2d40 !important;
+  border-color: #374151 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Paneles de tercer nivel (historial, comentarios) */
+:root.dark .card > div > div > div {
+  background-color: #182438 !important;
+  border-color: #374151 !important;
+}
+
+/* ── Contenedores con backgroundColor inline (vistas sin .card) ──────── */
+
+/* Formulario de creación de ticket (backgroundColor: "white") */
+:root.dark [style*="background-color: white"] {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* Items de ticket en lista cliente/agente (backgroundColor: "#fafafa" / "#f9fafb") */
+:root.dark [style*="background-color: #fafafa"],
+:root.dark [style*="background-color: #f9fafb"] {
+  background-color: #263248 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Cajas de comentarios e historial (backgroundColor: "#fff" / "#ffffff")
+   :not excluye paneles naranja #fff7ed que deben conservar su color de acento */
+:root.dark [style*="background-color: #fff"]:not([style*="background-color: #fff7"]),
+:root.dark [style*="background-color: #ffffff"] {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* Textos secundarios con color inline en la vista de tickets */
+:root.dark [style*="color: #666"],
+:root.dark [style*="color: #6b7280"],
+:root.dark [style*="color: #4b5563"],
+:root.dark [style*="color: #374151"] {
+  color: #94a3b8 !important;
+}
+
+:root.dark [style*="color: #1f2937"],
+:root.dark [style*="color: #111827"] {
+  color: #e2e8f0 !important;
+}
+
+/* ── Niveles 4 y 5 dentro de .card (paneles expandibles) ──────────────── */
+/* Las cajas de "Ver Actividad Reciente" y "Ver Comentarios" están a 4–5
+   niveles de anidación dentro de .card, por eso las reglas anteriores
+   (que sólo cubrían hasta el nivel 3) no las alcanzaban.                  */
+
+:root.dark .card > div > div > div > div,
+:root.dark .card > div > div > div > div > div {
+  background-color: #1e1e1e !important;
+  border-color: #2a3a4a !important;
+  color: #f5f5f5 !important;
+}
+
+/* Items individuales de comentario dentro del scroll */
+:root.dark .card > div > div > div > div > div > div {
+  background-color: #1e1e1e !important;
+  border-color: #2a3a4a !important;
+  color: #f5f5f5 !important;
+}
+
+/* ── Fondos pastel que quedan blancos (paneles de asignación, métricas) ── */
+
+:root.dark [style*="background-color: #f0f9ff"],
+:root.dark [style*="background-color: #f8fafc"],
+:root.dark [style*="background-color: #f3f4f6"],
+:root.dark [style*="background-color: #e5e7eb"],
+:root.dark [style*="background-color: #f1f5f9"],
+:root.dark [style*="background-color: #dbeafe"],
+:root.dark [style*="background-color: #d1fae5"],
+:root.dark [style*="background-color: #f0fdf4"] {
+  background-color: #1e1e1e !important;
+  border-color: #2a3a4a !important;
+  color: #f5f5f5 !important;
+}
+
+/* ── Textos de etiquetas internas ("Estado: Cerrado", "Tipo: Hardware") ── */
+/* Cubre los colores de texto de paneles de acción y metadatos de tickets  */
+
+:root.dark [style*="color: #9ca3af"],
+:root.dark [style*="color: #9a3412"],
+:root.dark [style*="color: #1e40af"],
+:root.dark [style*="color: #047857"],
+:root.dark [style*="color: #0369a1"],
+:root.dark [style*="color: #065f46"],
+:root.dark [style*="color: #475569"],
+:root.dark [style*="color: #64748b"] {
+  color: #aaaaaa !important;
+}
+
+/* Refuerza el color de texto en spans y divs con color inline oscuro que
+   quedarían invisibles sobre fondo #1e1e1e                                */
+:root.dark [style*="color: #166534"],
+:root.dark [style*="color: #92400e"],
+:root.dark [style*="color: #991b1b"] {
+  color: #f5f5f5 !important;
+}
+
+/* Bordes de separación internos (líneas dashed entre secciones) */
+:root.dark [style*="border-top: 1px dashed"],
+:root.dark [style*="border-bottom: 1px solid #f3f4f6"] {
+  border-color: #334155 !important;
+}
+
+/* ── Campana de Notificaciones ──────────────────────────────────────────── */
+/* El dropdown usa la propiedad shorthand `background: white` (no
+   background-color), por eso las reglas anteriores no lo alcanzaban.       */
+
+:root.dark [style*="background: white"] {
+  background: #1e1e1e !important;
+  color: #f5f5f5 !important;
+}
+
+/* Ítems de notificación no leídos (fondo azul muy claro #eff6ff) */
+:root.dark [style*="background-color: #eff6ff"] {
+  background-color: #1a2540 !important;
+  color: #f5f5f5 !important;
+}
+
+/* Líneas divisoras internas del dropdown */
+:root.dark [style*="border-bottom: 1px solid #f3f4f6"],
+:root.dark [style*="border: 1px solid #e5e7eb"] {
+  border-color: #334155 !important;
+}
+
+/* Texto "● Nuevo" en notificaciones (azul sobre fondo oscuro) */
+:root.dark [style*="color: #2563eb"] {
+  color: #93c5fd !important;
+}
+
+/* ── Panel de Actividad Reciente / Cambiar Estado ───────────────────────── */
+/* Asegura que background-color: #ffffff (explícito) sea siempre oscuro,
+   independientemente del nivel de anidación o especificidad estructural.   */
+
+:root.dark [style*="background-color: #ffffff"] {
+  background-color: #121212 !important;
+  color: #f5f5f5 !important;
+}
+
+/* Filas del historial: separadores y textos de metadatos */
+:root.dark [style*="color: #9ca3af"] {
+  color: #aaaaaa !important;
+}
+
+/* Texto de acción en filas de historial ("Cambio de Estado", etc.) */
+:root.dark [style*="color: #374151"][style*="font-weight"] {
+  color: #f5f5f5 !important;
+}

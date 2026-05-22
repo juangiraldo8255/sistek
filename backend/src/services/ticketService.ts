@@ -232,12 +232,110 @@ export const searchTickets = async (keyword: string, userId: number, role: strin
 // Obtener historial de cambios (HU-7)
 export const getTicketHistory = async (ticketId: number) => {
   const result = await pool.query(
-    `SELECT th.*, u.username as nombre_usuario 
-     FROM ticket_historia th 
-     LEFT JOIN users u ON th.usuario_accion_id = u.id 
-     WHERE th.ticket_id = $1 
+    `SELECT th.*, u.username as nombre_usuario
+     FROM ticket_historia th
+     LEFT JOIN users u ON th.usuario_accion_id = u.id
+     WHERE th.ticket_id = $1
      ORDER BY th.fecha_registro ASC`,
     [ticketId]
   );
   return result.rows;
+};
+
+// Reabrir ticket (HU-019)
+export const reopenTicket = async (
+  ticketId: number,
+  userId: number,
+  userRole: string,
+  motivo: string
+) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Obtener el ticket actual
+    const ticketRes = await client.query(
+      `SELECT t.*, u.username as creator
+       FROM tickets t LEFT JOIN users u ON t.user_id = u.id
+       WHERE t.id = $1`,
+      [ticketId]
+    );
+    const ticket = ticketRes.rows[0];
+    if (!ticket) throw new Error('Ticket no encontrado');
+    if (ticket.status !== 'Cerrado') throw new Error('Solo se pueden reabrir tickets con estado "Cerrado"');
+
+    // Validar permisos por rol
+    if (userRole === 'cliente' && ticket.user_id !== userId) {
+      throw new Error('No tienes permisos para reabrir este ticket');
+    }
+    if (userRole === 'agente' && ticket.assigned_agent_id !== userId) {
+      throw new Error('Solo puedes reabrir tickets asignados a ti');
+    }
+
+    // 2. Restricción de 30 días para clientes
+    if (userRole === 'cliente') {
+      const cierreRes = await client.query(
+        `SELECT fecha_registro FROM ticket_historia
+         WHERE ticket_id = $1 AND tipo_accion = 'status_change' AND valor_nuevo = 'Cerrado'
+         ORDER BY fecha_registro DESC LIMIT 1`,
+        [ticketId]
+      );
+      const fechaCierre = cierreRes.rows.length > 0
+        ? new Date(cierreRes.rows[0].fecha_registro)
+        : new Date(ticket.updated_at);
+
+      const diasTranscurridos = (Date.now() - fechaCierre.getTime()) / (1000 * 60 * 60 * 24);
+      if (diasTranscurridos > 30) {
+        throw new Error(
+          `Han pasado ${Math.floor(diasTranscurridos)} días desde el cierre del ticket. ` +
+          'El plazo máximo para reabrirlo es de 30 días. Por favor, crea un nuevo ticket.'
+        );
+      }
+    }
+
+    // 3. Cambiar estado a "En progreso"
+    await client.query(
+      'UPDATE tickets SET status = $1, updated_at = NOW() WHERE id = $2',
+      ['En progreso', ticketId]
+    );
+
+    // 4. Registrar en historial con tipo 'reopen'
+    await client.query(
+      `INSERT INTO ticket_historia
+         (ticket_id, usuario_accion_id, tipo_accion, valor_anterior, valor_nuevo)
+       VALUES ($1, $2, 'reopen', 'Cerrado', $3)`,
+      [ticketId, userId, `En progreso | Motivo: ${motivo}`]
+    );
+
+    // 5. Guardar comentario con el motivo
+    await client.query(
+      `INSERT INTO comments (ticket_id, user_id, content) VALUES ($1, $2, $3)`,
+      [ticketId, userId, `[Reapertura] ${motivo}`]
+    );
+
+    // 6. Notificar al agente asignado (si existe)
+    if (ticket.assigned_agent_id) {
+      await client.query(
+        'INSERT INTO notifications (user_id, ticket_id) VALUES ($1, $2)',
+        [ticket.assigned_agent_id, ticketId]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const updatedRes = await client.query(
+      `SELECT t.*, u.username as creator, a.username as assigned_agent
+       FROM tickets t
+       LEFT JOIN users u ON t.user_id = u.id
+       LEFT JOIN users a ON t.assigned_agent_id = a.id
+       WHERE t.id = $1`,
+      [ticketId]
+    );
+    return updatedRes.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 };

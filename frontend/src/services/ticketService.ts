@@ -149,6 +149,20 @@ export const ticketService = {
     return response.json();
   },
 
+  // Reabrir ticket (HU-019)
+  async reopenTicket(id: number, motivo: string): Promise<Ticket> {
+    const response = await fetch(`${API_URL}/tickets/${id}/reopen`, {
+      method: 'POST',
+      headers: authService.getAuthHeaders(),
+      body: JSON.stringify({ motivo })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error);
+    }
+    return response.json();
+  },
+
   // Eliminar ticket (solo admin)
   async deleteTicket(id: number): Promise<void> {
     const response = await fetch(`${API_URL}/tickets/${id}`, {

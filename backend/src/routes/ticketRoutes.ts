@@ -29,6 +29,9 @@ router.put('/:id/priority', agentOnly, ticketController.updateTicketPriority);
 // Obtener historial (HU-7)
 router.get('/:id/history', ticketController.getTicketHistory);
 
+// Reabrir ticket (HU-019) - cliente y agente
+router.post('/:id/reopen', ticketController.reopenTicket);
+
 // Eliminar ticket - solo admin
 router.delete('/:id', adminOnly, ticketController.deleteTicket);
 

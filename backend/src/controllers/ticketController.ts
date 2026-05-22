@@ -235,6 +235,30 @@ export const searchTickets = async (req: Request, res: Response) => {
   }
 };
 
+// Reabrir ticket (HU-019)
+export const reopenTicket = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { motivo } = req.body;
+    const userId = req.userId!;
+    const userRole = req.userRole!;
+
+    if (!motivo || !motivo.trim()) {
+      return res.status(400).json({ error: 'El motivo de reapertura es obligatorio' });
+    }
+
+    const updatedTicket = await ticketService.reopenTicket(
+      parseInt(id),
+      userId,
+      userRole,
+      motivo.trim()
+    );
+    res.json(updatedTicket);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // Eliminar ticket
 export const deleteTicket = async (req: Request, res: Response) => {
   try {

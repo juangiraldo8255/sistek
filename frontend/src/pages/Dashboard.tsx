@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ticketService, Ticket } from "../services/ticketService";
 import { authService, User } from "../services/authService";
 import NotificationBell from "../components/NotificationBell";
+import { useTheme } from "../context/ThemeContext";
 
 import "../styles.css";
 
@@ -79,6 +80,11 @@ function Dashboard() {
     navigate("/");
   };
 
+  const { theme, toggleTheme } = useTheme();
+  const isDark    = theme === "dark";
+  const axisColor = isDark ? "#aaaaaa" : "#6b7280";
+  const gridColor = isDark ? "#334155" : "#e5e7eb";
+
   if (!user) return null;
 
   return (
@@ -105,6 +111,9 @@ function Dashboard() {
           </>
         )}
 
+        <button onClick={toggleTheme} style={{ marginTop: "auto" }}>
+          {theme === "dark" ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
+        </button>
         <button onClick={logout}>Cerrar sesión</button>
       </div>
 
@@ -130,13 +139,13 @@ function Dashboard() {
             </h3>
             
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", marginBottom: "20px" }}>
-              <div style={{ padding: "15px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>TIEMPO PROMEDIO</p>
-                <h2 style={{ margin: "5px 0" }}>{stats.tiempoPromedio} <span style={{fontSize: "14px"}}>Hrs</span></h2>
+              <div style={{ padding: "15px", backgroundColor: isDark ? "#1e1e1e" : "#f8fafc", borderRadius: "8px", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}` }}>
+                <p style={{ fontSize: "12px", color: isDark ? "#aaaaaa" : "#64748b", margin: 0 }}>TIEMPO PROMEDIO</p>
+                <h2 style={{ margin: "5px 0", color: isDark ? "#f5f5f5" : "#1e293b" }}>{stats.tiempoPromedio} <span style={{fontSize: "14px"}}>Hrs</span></h2>
               </div>
-              <div style={{ padding: "15px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>TOTAL CERRADOS</p>
-                <h2 style={{ margin: "5px 0" }}>{tickets.filter(t => t.status === 'Cerrado').length}</h2>
+              <div style={{ padding: "15px", backgroundColor: isDark ? "#1e1e1e" : "#f8fafc", borderRadius: "8px", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}` }}>
+                <p style={{ fontSize: "12px", color: isDark ? "#aaaaaa" : "#64748b", margin: 0 }}>TOTAL CERRADOS</p>
+                <h2 style={{ margin: "5px 0", color: isDark ? "#f5f5f5" : "#1e293b" }}>{tickets.filter(t => t.status === 'Cerrado').length}</h2>
               </div>
             </div>
 
@@ -144,10 +153,10 @@ function Dashboard() {
               <p style={{ fontSize: "13px", fontWeight: "bold", color: "#475569" }}>Tickets Cerrados por Agente</p>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.datosGrafica}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="nombre" fontSize={11} />
-                  <YAxis fontSize={11} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                  <XAxis dataKey="nombre" fontSize={11} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                  <YAxis fontSize={11} tick={{ fill: axisColor }} axisLine={{ stroke: gridColor }} tickLine={{ stroke: gridColor }} />
+                  <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${gridColor}`, color: isDark ? "#f5f5f5" : "#374151" }} labelStyle={{ color: isDark ? "#f5f5f5" : "#374151" }} />
                   <Bar dataKey="cantidad" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -176,10 +185,10 @@ function Dashboard() {
               </button>
             </div>
 
-            <div style={{ padding: "15px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-  <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>TOTAL CREADOS</p>
-  <h2 style={{ margin: "5px 0" }}>{tickets.length}</h2>
-</div>
+            <div style={{ padding: "15px", backgroundColor: isDark ? "#1e1e1e" : "#f8fafc", borderRadius: "8px", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}` }}>
+              <p style={{ fontSize: "12px", color: isDark ? "#aaaaaa" : "#64748b", margin: 0 }}>TOTAL CREADOS</p>
+              <h2 style={{ margin: "5px 0", color: isDark ? "#f5f5f5" : "#1e293b" }}>{tickets.length}</h2>
+            </div>
 
             {/* LISTADO DE AGENTES */}
             <div className="card">
