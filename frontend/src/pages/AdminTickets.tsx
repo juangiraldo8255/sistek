@@ -7,6 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import ReopenModal from "../components/ReopenModal";
 import AttachmentSection from "../components/AttachmentSection";
 import "../styles.css";
+import logo from "../Bienvenido.png";
 
 function AdminTickets() {
   const [user, setUser] = useState<any>(null);
@@ -132,15 +133,19 @@ function AdminTickets() {
   };
 
   const cambiarEstado = async (ticketId: number, nuevoEstado: 'Abierto' | 'En progreso' | 'Cerrado') => {
-  try {
-  
-    await ticketService.updateTicketStatus(ticketId, nuevoEstado, user.id);
-    alert("Estado actualizado y registrado en historial");
-    cargarDatos(); 
-  } catch (err: any) {
-    alert("Error al cambiar estado: " + err.message);
-  }
-};
+    try {
+      await ticketService.updateTicketStatus(ticketId, nuevoEstado, user.id);
+      await cargarDatos();
+      alert("Estado actualizado exitosamente");
+      // Si el historial de este ticket está abierto, refrescarlo automáticamente
+      if (showHistorialId === ticketId) {
+        const data = await ticketService.getTicketHistory(ticketId);
+        setHistorialSelected(data);
+      }
+    } catch (err: any) {
+      alert("Error al cambiar estado: " + err.message);
+    }
+  };
 
   const logout = () => {
     authService.logout();
@@ -247,7 +252,13 @@ function AdminTickets() {
     try {
       await ticketService.updateTicketPriority(ticketId, newPriority);
       setPrioridadSeleccionada(prev => { const n = { ...prev }; delete n[ticketId]; return n; });
-      cargarDatos();
+      await cargarDatos();
+      alert("Cambio de prioridad exitoso");
+      // Si el historial de este ticket está abierto, refrescarlo automáticamente
+      if (showHistorialId === ticketId) {
+        const data = await ticketService.getTicketHistory(ticketId);
+        setHistorialSelected(data);
+      }
     } catch (err: any) {
       alert("Error actualizando prioridad: " + err.message);
     }
@@ -281,56 +292,65 @@ function AdminTickets() {
       )}
 
       <div className="sidebar">
-        <h2>Sistek</h2>
-        <button onClick={() => navigate("/dashboard")}>Inicio</button>
-        <button onClick={() => navigate("/admin-tickets")} style={{ backgroundColor: "#3b82f6", color: "white" }}>
-          Todos los Tickets
-        </button>
-        <button onClick={() => navigate("/reports")}>Reportes</button>
-        <button onClick={toggleTheme} style={{ marginTop: "auto" }}>
+        <div className="sidebar-header">
+          <img src={logo} alt="Sistek" />
+          <span>SISTEK</span>
+        </div>
+        <button className="sidebar-nav-btn" onClick={() => navigate("/dashboard")}>🏠 Inicio</button>
+        <button className="sidebar-nav-btn sidebar-nav-active" onClick={() => navigate("/admin-tickets")}>🎫 Todos los Tickets</button>
+        <button className="sidebar-nav-btn" onClick={() => navigate("/reports")}>📊 Reportes</button>
+        <button className="sidebar-nav-btn sidebar-theme-btn" onClick={toggleTheme}>
           {theme === "dark" ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
         </button>
-        <button onClick={logout}>Cerrar sesión</button>
+        <button className="sidebar-logout-btn" onClick={logout}>🚪 Cerrar sesión</button>
       </div>
 
       <div className="main-content">
         <h1>Gestión de Tickets</h1>
 
-        <div className="card">
-          {/* BARRA DE BÚSQUEDA */}
-          <div style={{ display: "flex", gap: "10px", marginBottom: "16px", alignItems: "center" }}>
-            <input
-              type="text"
-              placeholder="Buscar por título o descripción..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && realizarBusqueda()}
-              style={{
-                flex: 1,
-                padding: "11px 16px",
-                border: "1px solid #d1d5db",
-                borderRadius: "4px",
-                fontSize: "14px",
-                color: "#1f2937",
-                backgroundColor: "white",
-                marginTop: "0",
-                boxSizing: "border-box"
-              }}
-            />
+        {/* ── PANEL DE BÚSQUEDA Y FILTROS ── */}
+        <div className="card" style={{ borderRadius: "14px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", marginBottom: "20px" }}>
+
+          {/* Barra de búsqueda */}
+          <div style={{ display: "flex", gap: "10px", marginBottom: filtroBusqueda ? "10px" : "20px", alignItems: "center" }}>
+            <div style={{ flex: 1, position: "relative" }}>
+              <span style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Buscar por título o descripción..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && realizarBusqueda()}
+                style={{
+                  width: "100%",
+                  padding: "13px 16px 13px 42px",
+                  border: "1.5px solid #e5e7eb",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  color: "#1f2937",
+                  backgroundColor: isDark ? "#0f172a" : "white",
+                  marginTop: "0",
+                  boxSizing: "border-box",
+                  outline: "none",
+                  transition: "border-color 0.2s"
+                }}
+              />
+            </div>
             <button
               onClick={realizarBusqueda}
               style={{
-                backgroundColor: "#3b82f6",
+                backgroundColor: "#2563eb",
                 color: "white",
-                padding: "8px 18px",
+                padding: "13px 22px",
                 border: "none",
-                borderRadius: "4px",
+                borderRadius: "10px",
                 cursor: "pointer",
                 fontSize: "14px",
-                fontWeight: "bold",
+                fontWeight: "700",
                 width: "auto",
                 marginTop: "0",
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: "0 2px 8px rgba(37,99,235,0.3)"
               }}
             >
               Buscar
@@ -339,103 +359,97 @@ function AdminTickets() {
               <button
                 onClick={limpiarBusqueda}
                 style={{
-                  backgroundColor: "#e5e7eb",
+                  backgroundColor: "#f1f5f9",
                   color: "#374151",
-                  padding: "8px 14px",
-                  border: "none",
-                  borderRadius: "4px",
+                  padding: "13px 16px",
+                  border: "1.5px solid #e5e7eb",
+                  borderRadius: "10px",
                   cursor: "pointer",
                   fontSize: "14px",
                   width: "auto",
                   marginTop: "0",
-                  flexShrink: 0
+                  flexShrink: 0,
+                  fontWeight: "600"
                 }}
               >
                 ✕ Limpiar
               </button>
             )}
           </div>
+
           {filtroBusqueda && (
-            <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "12px" }}>
-              Resultados para: <strong>"{filtroBusqueda}"</strong> ({tickets.length} encontrado{tickets.length !== 1 ? "s" : ""})
+            <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "16px", padding: "8px 12px", backgroundColor: "#f8fafc", borderRadius: "8px" }}>
+              🔎 Resultados para: <strong>"{filtroBusqueda}"</strong> — {tickets.length} encontrado{tickets.length !== 1 ? "s" : ""}
             </p>
           )}
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <h3 style={{ margin: 0 }}>Filtrar por Estado</h3>
+          {/* Encabezado de filtros */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <h3 style={{ margin: 0, fontSize: "15px", color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700" }}>
+              🗂️ Filtrar por Estado
+            </h3>
             <button
               onClick={() => setSortByPriority(s => !s)}
               style={{
-                backgroundColor: sortByPriority ? "#6366f1" : "#e5e7eb",
+                backgroundColor: sortByPriority ? "#6366f1" : "#f1f5f9",
                 color: sortByPriority ? "white" : "#374151",
-                padding: "7px 14px",
-                border: "none",
-                borderRadius: "4px",
+                padding: "8px 16px",
+                border: sortByPriority ? "none" : "1.5px solid #e5e7eb",
+                borderRadius: "10px",
                 cursor: "pointer",
                 fontSize: "13px",
-                fontWeight: "bold"
+                fontWeight: "700",
+                transition: "all 0.2s",
+                boxShadow: sortByPriority ? "0 2px 8px rgba(99,102,241,0.3)" : "none"
               }}
             >
-              ↕ {sortByPriority ? "Orden: Prioridad" : "Ordenar por Prioridad"}
+              ↕ {sortByPriority ? "Orden: Prioridad ✓" : "Ordenar por Prioridad"}
             </button>
           </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              onClick={() => setFiltroEstado("Todos")}
-              style={{
-                backgroundColor: filtroEstado === "Todos" ? "#3b82f6" : "#e5e7eb",
-                color: filtroEstado === "Todos" ? "white" : "#374151",
-                padding: "8px 16px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "500"
-              }}
-            >
-              Todos ({tickets.length})
-            </button>
-            <button
-              onClick={() => setFiltroEstado("Abierto")}
-              style={{
-                backgroundColor: filtroEstado === "Abierto" ? "#ef4444" : "#e5e7eb",
-                color: filtroEstado === "Abierto" ? "white" : "#374151",
-                padding: "8px 16px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "500"
-              }}
-            >
-              Abierto ({tickets.filter(t => t.status === "Abierto").length})
-            </button>
-            <button
-              onClick={() => setFiltroEstado("En progreso")}
-              style={{
-                backgroundColor: filtroEstado === "En progreso" ? "#f59e0b" : "#e5e7eb",
-                color: filtroEstado === "En progreso" ? "white" : "#374151",
-                padding: "8px 16px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "500"
-              }}
-            >
-              En progreso ({tickets.filter(t => t.status === "En progreso").length})
-            </button>
-            <button
-              onClick={() => setFiltroEstado("Cerrado")}
-              style={{
-                backgroundColor: filtroEstado === "Cerrado" ? "#10b981" : "#e5e7eb",
-                color: filtroEstado === "Cerrado" ? "white" : "#374151",
-                padding: "8px 16px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "500"
-              }}
-            >
-              Cerrado ({tickets.filter(t => t.status === "Cerrado").length})
-            </button>
+
+          {/* Botones de filtro — columna full-width */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[
+              { label: "Todos", emoji: "🔵", count: tickets.length, activeColor: "#2563eb", activeShadow: "rgba(37,99,235,0.25)" },
+              { label: "Abierto", emoji: "🔴", count: tickets.filter(t => t.status === "Abierto").length, activeColor: "#ef4444", activeShadow: "rgba(239,68,68,0.25)" },
+              { label: "En progreso", emoji: "🟠", count: tickets.filter(t => t.status === "En progreso").length, activeColor: "#f59e0b", activeShadow: "rgba(245,158,11,0.25)" },
+              { label: "Cerrado", emoji: "🟢", count: tickets.filter(t => t.status === "Cerrado").length, activeColor: "#10b981", activeShadow: "rgba(16,185,129,0.25)" },
+            ].map(({ label, emoji, count, activeColor, activeShadow }) => {
+              const isActive = filtroEstado === label;
+              return (
+                <button
+                  key={label}
+                  onClick={() => setFiltroEstado(label)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 18px",
+                    border: isActive ? "none" : `1.5px solid ${isDark ? "#334155" : "#e5e7eb"}`,
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    textAlign: "left",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    backgroundColor: isActive ? activeColor : (isDark ? "#1e293b" : "#f8fafc"),
+                    color: isActive ? "white" : (isDark ? "#cbd5e1" : "#374151"),
+                    boxShadow: isActive ? `0 3px 10px ${activeShadow}` : "none",
+                    transition: "all 0.18s"
+                  }}
+                >
+                  <span>{emoji} {label}</span>
+                  <span style={{
+                    backgroundColor: isActive ? "rgba(255,255,255,0.25)" : (isDark ? "#334155" : "#e5e7eb"),
+                    color: isActive ? "white" : (isDark ? "#94a3b8" : "#6b7280"),
+                    borderRadius: "20px",
+                    padding: "2px 10px",
+                    fontSize: "12px",
+                    fontWeight: "700"
+                  }}>{count}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -452,9 +466,11 @@ function AdminTickets() {
             </p>
           </div>
         ) : (
-          <div className="card">
-            <h3>Tickets ({ticketsFiltraos.length})</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginTop: "15px" }}>
+          <div className="card" style={{ borderRadius: "14px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "17px", color: isDark ? "#f1f5f9" : "#1f2937" }}>
+              🎫 Tickets ({ticketsFiltraos.length})
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {ticketsFiltraos.map((ticket) => {
   const sla = obtenerEstadoSLA(ticket);
 
@@ -462,11 +478,13 @@ function AdminTickets() {
     <div
       key={ticket.id}
       style={{
-        border: `2px solid ${dk.cardBorder}`,
-        borderRadius: "8px",
-        padding: "15px",
+        border: `1.5px solid ${dk.cardBorder}`,
+        borderRadius: "12px",
+        padding: "18px",
         backgroundColor: dk.card,
-        position: "relative"
+        position: "relative",
+        boxShadow: isDark ? "none" : "0 2px 8px rgba(0,0,0,0.05)",
+        transition: "box-shadow 0.2s"
       }}
     >
       <div style={{ 
@@ -727,7 +745,7 @@ function AdminTickets() {
       padding: "10px",
       borderRadius: "6px",
       border: `1px solid ${dk.expandedBorder}`,
-      maxHeight: "200px",
+      maxHeight: "300px",
       overflowY: "auto"
     }}>
       {historialSelected.length === 0 ? (

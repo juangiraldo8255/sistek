@@ -8,6 +8,7 @@ import { authService } from "../services/authService";
 import { reportService, ReportData, ReportFilters } from "../services/reportService";
 import { useTheme } from "../context/ThemeContext";
 import "../styles.css";
+import logo from "../Bienvenido.png";
 
 const ESTADO_COLORS: Record<string, string> = {
   Abiertos:     "#ef4444",
@@ -21,20 +22,39 @@ const PRIORIDAD_COLORS: Record<string, string> = {
   Baja:  "#10b981",
 };
 
+const METRIC_ACCENTS: Record<string, string> = {
+  "Total tickets":    "#6366f1",
+  "Abiertos":         "#ef4444",
+  "En progreso":      "#f59e0b",
+  "Cerrados":         "#10b981",
+  "Prom. respuesta":  "#3b82f6",
+  "Prom. resolución": "#8b5cf6",
+  "Tickets calificados": "#10b981",
+  "Sin calificar":    "#f59e0b",
+  "Promedio general": "#f59e0b",
+  "% Satisfacción":   "#6366f1",
+};
+
 function MetricCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const accent = METRIC_ACCENTS[label] ?? "#6366f1";
   return (
     <div style={{
-      padding: "18px 20px",
-      backgroundColor: isDark ? "#1e1e1e" : "#f8fafc",
-      borderRadius: "8px",
+      padding: "0",
+      backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
+      borderRadius: "12px",
       border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
       minWidth: "130px",
+      overflow: "hidden",
+      boxShadow: isDark ? "none" : "0 2px 8px rgba(0,0,0,0.06)",
     }}>
-      <p style={{ fontSize: "11px", color: isDark ? "#aaaaaa" : "#64748b", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
-      <h2 style={{ margin: "0", fontSize: "26px", color: isDark ? "#f5f5f5" : "#1e293b" }}>{value ?? "—"}</h2>
-      {sub && <p style={{ fontSize: "11px", color: isDark ? "#888888" : "#94a3b8", margin: "4px 0 0 0" }}>{sub}</p>}
+      <div style={{ height: "4px", backgroundColor: accent, borderRadius: "12px 12px 0 0" }} />
+      <div style={{ padding: "16px 18px" }}>
+        <p style={{ fontSize: "11px", color: isDark ? "#aaaaaa" : "#64748b", margin: "0 0 8px 0", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: "600" }}>{label}</p>
+        <h2 style={{ margin: "0", fontSize: "28px", color: accent, fontWeight: "700", lineHeight: 1 }}>{value ?? "—"}</h2>
+        {sub && <p style={{ fontSize: "11px", color: isDark ? "#888888" : "#94a3b8", margin: "6px 0 0 0" }}>{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -168,44 +188,52 @@ function Reports() {
     <div className="dashboard-container">
       {/* SIDEBAR */}
       <div className="sidebar">
-        <h2>Sistek</h2>
-        <button onClick={() => navigate("/dashboard")}>Inicio</button>
-        <button onClick={() => navigate("/admin-tickets")}>Todos los Tickets</button>
-        <button onClick={() => navigate("/reports")} style={{ backgroundColor: "#6366f1", color: "white" }}>
-          Reportes
-        </button>
-        <button onClick={toggleTheme} style={{ marginTop: "auto" }}>
+        <div className="sidebar-header">
+          <img src={logo} alt="Sistek" />
+          <span>SISTEK</span>
+        </div>
+        <button className="sidebar-nav-btn" onClick={() => navigate("/dashboard")}>🏠 Inicio</button>
+        <button className="sidebar-nav-btn" onClick={() => navigate("/admin-tickets")}>🎫 Todos los Tickets</button>
+        <button className="sidebar-nav-btn sidebar-nav-active" onClick={() => navigate("/reports")}>📊 Reportes</button>
+        <button className="sidebar-nav-btn sidebar-theme-btn" onClick={toggleTheme}>
           {theme === "dark" ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
         </button>
-        <button onClick={logout}>Cerrar sesión</button>
+        <button className="sidebar-logout-btn" onClick={logout}>🚪 Cerrar sesión</button>
       </div>
 
       {/* CONTENIDO PRINCIPAL */}
       <div className="main-content">
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
+        {/* ── ENCABEZADO ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "24px" }}>
           <div>
-            <h1 style={{ margin: "0 0 6px 0" }}>Reportes de Gestión</h1>
-            <p style={{ color: "#64748b", margin: 0 }}>Métricas y análisis de tickets del sistema</p>
+            <h1 style={{ margin: "0 0 4px 0", fontSize: "26px", color: isDark ? "#f1f5f9" : "#1e293b", fontWeight: "700" }}>
+              📊 Reportes de Gestión
+            </h1>
+            <p style={{ color: isDark ? "#94a3b8" : "#64748b", margin: 0, fontSize: "14px" }}>
+              Métricas y análisis de tickets del sistema
+            </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
             <button
               onClick={descargarReporte}
               disabled={downloading || loading}
               style={{
-                padding: "10px 20px",
+                padding: "12px 22px",
                 backgroundColor: downloading ? "#94a3b8" : "#10b981",
                 color: "white",
                 border: "none",
-                borderRadius: "6px",
+                borderRadius: "10px",
                 cursor: downloading || loading ? "not-allowed" : "pointer",
                 fontSize: "14px",
-                fontWeight: "bold",
+                fontWeight: "700",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                boxShadow: downloading ? "none" : "0 3px 10px rgba(16,185,129,0.35)",
+                transition: "all 0.2s"
               }}
             >
-              {downloading ? "Generando PDF..." : "Descargar PDF"}
+              {downloading ? "⏳ Generando PDF..." : "⬇️ Descargar PDF"}
             </button>
             {downloadError && (
               <p style={{ fontSize: "12px", color: "#ef4444", margin: 0, maxWidth: "220px", textAlign: "right" }}>
@@ -215,34 +243,42 @@ function Reports() {
           </div>
         </div>
 
-        {/* FILTROS */}
-        <div className="card" style={{ marginBottom: "20px" }}>
-          <h3 style={{ marginTop: 0, marginBottom: "14px", color: "#374151" }}>Filtros</h3>
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-end" }}>
+        {/* ── FILTROS ── */}
+        <div className="card" style={{ marginBottom: "20px", borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+          <h3 style={{ marginTop: 0, marginBottom: "16px", color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px" }}>
+            🔎 Filtros
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px", alignItems: "end" }}>
             <div>
-              <label style={{ display: "block", fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Fecha inicio</label>
+              <label style={{ display: "block", fontSize: "12px", color: isDark ? "#94a3b8" : "#6b7280", marginBottom: "6px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                📅 Fecha inicio
+              </label>
               <input
                 type="date"
                 value={filters.start_date}
                 onChange={e => setFilters(f => ({ ...f, start_date: e.target.value }))}
-                style={{ padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "4px", fontSize: "13px" }}
+                style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${isDark ? "#334155" : "#e5e7eb"}`, borderRadius: "10px", fontSize: "13px", backgroundColor: isDark ? "#0f172a" : "white", color: isDark ? "#f1f5f9" : "#374151", boxSizing: "border-box", outline: "none" }}
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Fecha fin</label>
+              <label style={{ display: "block", fontSize: "12px", color: isDark ? "#94a3b8" : "#6b7280", marginBottom: "6px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                📅 Fecha fin
+              </label>
               <input
                 type="date"
                 value={filters.end_date}
                 onChange={e => setFilters(f => ({ ...f, end_date: e.target.value }))}
-                style={{ padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "4px", fontSize: "13px" }}
+                style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${isDark ? "#334155" : "#e5e7eb"}`, borderRadius: "10px", fontSize: "13px", backgroundColor: isDark ? "#0f172a" : "white", color: isDark ? "#f1f5f9" : "#374151", boxSizing: "border-box", outline: "none" }}
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Agente</label>
+              <label style={{ display: "block", fontSize: "12px", color: isDark ? "#94a3b8" : "#6b7280", marginBottom: "6px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                👤 Agente
+              </label>
               <select
                 value={filters.agent_id}
                 onChange={e => setFilters(f => ({ ...f, agent_id: e.target.value }))}
-                style={{ padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "4px", fontSize: "13px", backgroundColor: "white" }}
+                style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${isDark ? "#334155" : "#e5e7eb"}`, borderRadius: "10px", fontSize: "13px", backgroundColor: isDark ? "#0f172a" : "white", color: isDark ? "#f1f5f9" : "#374151", boxSizing: "border-box", outline: "none", cursor: "pointer" }}
               >
                 <option value="">Todos los agentes</option>
                 {agentes.map(a => (
@@ -251,44 +287,48 @@ function Reports() {
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Estado</label>
+              <label style={{ display: "block", fontSize: "12px", color: isDark ? "#94a3b8" : "#6b7280", marginBottom: "6px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                🏷️ Estado
+              </label>
               <select
                 value={filters.status}
                 onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-                style={{ padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "4px", fontSize: "13px", backgroundColor: "white" }}
+                style={{ width: "100%", padding: "10px 12px", border: `1.5px solid ${isDark ? "#334155" : "#e5e7eb"}`, borderRadius: "10px", fontSize: "13px", backgroundColor: isDark ? "#0f172a" : "white", color: isDark ? "#f1f5f9" : "#374151", boxSizing: "border-box", outline: "none", cursor: "pointer" }}
               >
                 <option value="">Todos los estados</option>
-                <option value="Abierto">Abierto</option>
-                <option value="En progreso">En progreso</option>
-                <option value="Cerrado">Cerrado</option>
+                <option value="Abierto">🔴 Abierto</option>
+                <option value="En progreso">🟠 En progreso</option>
+                <option value="Cerrado">🟢 Cerrado</option>
               </select>
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", alignSelf: "end" }}>
               <button
                 onClick={aplicarFiltros}
-                style={{ padding: "8px 18px", backgroundColor: "#6366f1", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
+                style={{ flex: 1, padding: "10px 18px", backgroundColor: "#6366f1", color: "white", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "700", boxShadow: "0 2px 8px rgba(99,102,241,0.3)" }}
               >
-                Aplicar
+                ✓ Aplicar
               </button>
               {hayFiltros && (
                 <button
                   onClick={limpiarFiltros}
-                  style={{ padding: "8px 14px", backgroundColor: "#e5e7eb", color: "#374151", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px" }}
+                  style={{ padding: "10px 14px", backgroundColor: isDark ? "#1e293b" : "#f1f5f9", color: isDark ? "#cbd5e1" : "#374151", border: `1.5px solid ${isDark ? "#334155" : "#e5e7eb"}`, borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}
                 >
-                  ✕ Limpiar
+                  ✕
                 </button>
               )}
             </div>
           </div>
           {hayFiltros && (
-            <p style={{ fontSize: "12px", color: "#6366f1", marginTop: "10px", marginBottom: 0 }}>
-              Filtros activos: {[
-                filters.start_date && `desde ${filters.start_date}`,
-                filters.end_date   && `hasta ${filters.end_date}`,
-                filters.agent_id   && `agente: ${agentes.find(a => String(a.id) === filters.agent_id)?.username ?? filters.agent_id}`,
-                filters.status     && `estado: ${filters.status}`,
-              ].filter(Boolean).join(" · ")}
-            </p>
+            <div style={{ marginTop: "14px", padding: "10px 14px", backgroundColor: isDark ? "#1e293b" : "#eef2ff", borderRadius: "8px", border: `1px solid ${isDark ? "#334155" : "#c7d2fe"}` }}>
+              <p style={{ fontSize: "12px", color: isDark ? "#a5b4fc" : "#6366f1", margin: 0, fontWeight: "600" }}>
+                🔵 Filtros activos: {[
+                  filters.start_date && `desde ${filters.start_date}`,
+                  filters.end_date   && `hasta ${filters.end_date}`,
+                  filters.agent_id   && `agente: ${agentes.find(a => String(a.id) === filters.agent_id)?.username ?? filters.agent_id}`,
+                  filters.status     && `estado: ${filters.status}`,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            </div>
           )}
         </div>
 
@@ -303,8 +343,8 @@ function Reports() {
         ) : data ? (
           <>
             {/* MÉTRICAS GENERALES */}
-            <div className="card" style={{ marginBottom: "20px" }}>
-              <h3 style={{ marginTop: 0, color: "#374151" }}>Métricas Generales</h3>
+            <div className="card" style={{ marginBottom: "20px", borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+              <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>📈 Métricas Generales</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px" }}>
                 <MetricCard label="Total tickets"   value={data.resumen.total} />
                 <MetricCard label="Abiertos"        value={data.resumen.abiertos} />
@@ -324,19 +364,21 @@ function Reports() {
             </div>
 
             {/* MÉTRICAS POR PRIORIDAD */}
-            <div className="card" style={{ marginBottom: "20px" }}>
-              <h3 style={{ marginTop: 0, color: "#374151" }}>Tickets por Prioridad</h3>
-              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div className="card" style={{ marginBottom: "20px", borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+              <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>🚦 Tickets por Prioridad</h3>
+              <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
                 {dataPorPrioridad.map(p => (
                   <div key={p.name} style={{
-                    flex: 1, minWidth: "110px", padding: "14px",
-                    backgroundColor: "#f8fafc", borderRadius: "8px",
-                    border: `2px solid ${p.fill}22`,
-                    borderLeft: `4px solid ${p.fill}`,
-                    textAlign: "center"
+                    flex: 1, minWidth: "110px", padding: "18px 16px",
+                    backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
+                    borderRadius: "12px",
+                    border: `1.5px solid ${p.fill}33`,
+                    borderLeft: `5px solid ${p.fill}`,
+                    textAlign: "center",
+                    boxShadow: `0 2px 8px ${p.fill}18`
                   }}>
-                    <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 6px 0" }}>{p.name}</p>
-                    <h2 style={{ margin: 0, color: p.fill }}>{p.value}</h2>
+                    <p style={{ fontSize: "11px", color: isDark ? "#94a3b8" : "#64748b", margin: "0 0 8px 0", textTransform: "uppercase", fontWeight: "600", letterSpacing: "0.05em" }}>{p.name}</p>
+                    <h2 style={{ margin: 0, color: p.fill, fontSize: "30px", fontWeight: "700" }}>{p.value}</h2>
                   </div>
                 ))}
               </div>
@@ -345,8 +387,8 @@ function Reports() {
             {/* GRÁFICOS EN DOS COLUMNAS */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               {/* Gráfico por estado */}
-              <div className="card">
-                <h3 style={{ marginTop: 0, color: "#374151" }}>Tickets por Estado</h3>
+              <div className="card" style={{ borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>🔵 Tickets por Estado</h3>
                 {data.resumen.total === 0 ? (
                   <p style={{ color: "#6b7280", textAlign: "center", padding: "30px 0" }}>Sin datos para mostrar</p>
                 ) : (
@@ -367,8 +409,8 @@ function Reports() {
               </div>
 
               {/* Gráfico por agente */}
-              <div className="card">
-                <h3 style={{ marginTop: 0, color: "#374151" }}>Tickets por Agente</h3>
+              <div className="card" style={{ borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>👤 Tickets por Agente</h3>
                 {dataPorAgente.length === 0 ? (
                   <p style={{ color: "#6b7280", textAlign: "center", padding: "30px 0" }}>
                     {filters.agent_id || filters.status ? "Sin datos con los filtros seleccionados" : "No hay tickets asignados a agentes"}
@@ -394,9 +436,9 @@ function Reports() {
             {data.calificaciones && (
               <>
                 {/* ── Métricas generales de satisfacción ── */}
-                <div className="card" style={{ marginBottom: "20px" }}>
-                  <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
-                    Satisfacción del Cliente
+                <div className="card" style={{ marginBottom: "20px", borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                  <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>
+                    ⭐ Satisfacción del Cliente
                   </h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px" }}>
                     <MetricCard
@@ -426,9 +468,9 @@ function Reports() {
 
                 {/* ── Gráfico de distribución de calificaciones ── */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-                  <div className="card">
-                    <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
-                      Distribución de Calificaciones
+                  <div className="card" style={{ borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                    <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>
+                      📊 Distribución de Calificaciones
                     </h3>
                     {data.calificaciones.general.calificados === 0 ? (
                       <p style={{ color: "#6b7280", textAlign: "center", padding: "30px 0" }}>
@@ -456,9 +498,9 @@ function Reports() {
                   </div>
 
                   {/* ── Desglose numérico de distribución ── */}
-                  <div className="card">
-                    <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
-                      Detalle de Distribución
+                  <div className="card" style={{ borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                    <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>
+                      🌟 Detalle de Distribución
                     </h3>
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                       {[
@@ -489,9 +531,9 @@ function Reports() {
                 </div>
 
                 {/* ── Tabla unificada por agente (tickets + calificaciones) ── */}
-                <div className="card" style={{ marginBottom: "20px" }}>
-                  <h3 style={{ marginTop: 0, color: isDark ? "#f5f5f5" : "#374151" }}>
-                    Desempeño y Satisfacción por Agente
+                <div className="card" style={{ marginBottom: "20px", borderRadius: "14px", padding: "22px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+                  <h3 style={{ marginTop: 0, color: isDark ? "#f1f5f9" : "#374151", fontWeight: "700", fontSize: "15px", marginBottom: "16px" }}>
+                    🏆 Desempeño y Satisfacción por Agente
                   </h3>
                   {agentesUnificados.length === 0 ? (
                     <p style={{ color: "#6b7280", textAlign: "center", padding: "20px 0" }}>

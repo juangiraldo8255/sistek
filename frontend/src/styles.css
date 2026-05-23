@@ -12,23 +12,53 @@ body {
 /* LADO IZQUIERDO */
 .left-panel {
   flex: 1;
-  background: #2563eb;
+  background: linear-gradient(150deg, #1e62e8 0%, #2563eb 50%, #3b82f6 100%);
   color: white;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   padding: 60px;
+  text-align: center;
+  gap: 32px;
 }
 
 .left-panel h1 {
-  font-size: 40px;
-  margin-bottom: 10px;
+  font-size: 52px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.left-panel p {
+  font-size: 16px;
+  margin: 0;
+  opacity: 0.88;
+}
+
+.left-panel-logo {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.left-panel-logo img {
+  width: 148px;
+  height: 148px;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
 /* LADO DERECHO */
 .right-panel {
   flex: 1;
-  background: #f5f5f5;
+  background: #f0f4f8;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -36,11 +66,64 @@ body {
 
 /* FORMULARIO */
 .form-box {
-  width: 300px;
+  width: 400px;
+  background: white;
+  border-radius: 18px;
+  padding: 48px 44px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
 }
 
 .form-box h2 {
-  margin-bottom: 20px;
+  margin: 0 0 28px 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.form-box input {
+  width: 100%;
+  padding: 14px 16px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #e8f0fe;
+  font-size: 15px;
+  color: #374151;
+  box-sizing: border-box;
+  outline: none;
+  font-family: inherit;
+}
+
+.form-box input:focus {
+  background: #dbeafe;
+}
+
+.form-box input::placeholder {
+  color: #9ca3af;
+}
+
+.form-box button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 22px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+}
+
+.form-box button:hover {
+  background: #1d4ed8;
+}
+
+.form-box button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 input {
@@ -67,22 +150,55 @@ button:hover {
 .link {
   margin-top: 10px;
   font-size: 14px;
+  text-align: center;
 }
 
 /* DASHBOARD LAYOUT */
 .dashboard-container {
   display: flex;
   height: 100vh;
+  overflow: hidden;
 }
 
 /* SIDEBAR */
 .sidebar {
-  width: 250px;
+  width: 260px;
+  min-width: 260px;
   background: #2563eb;
   color: white;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 24px 16px;
+  height: 100vh;
+  box-sizing: border-box;
+  gap: 8px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.sidebar-header img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: white;
+  flex-shrink: 0;
+}
+
+.sidebar-header span {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1.5px;
 }
 
 .sidebar h2 {
@@ -99,7 +215,55 @@ button:hover {
 }
 
 .sidebar button:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-nav-btn {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: none !important;
+  color: white !important;
+  text-align: left !important;
+  padding: 13px 16px !important;
+  cursor: pointer;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  width: 100%;
+  transition: background 0.18s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+.sidebar-theme-btn {
+  margin-top: auto !important;
+}
+
+.sidebar-nav-active {
+  background: rgba(255, 255, 255, 0.35) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.sidebar-logout-btn {
+  background: #ef4444 !important;
+  border: none !important;
+  color: white !important;
+  text-align: left !important;
+  padding: 13px 16px !important;
+  cursor: pointer;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  width: 100%;
+  transition: background 0.18s;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
+}
+
+.sidebar-logout-btn:hover {
+  background: #dc2626 !important;
 }
 
 /* CONTENIDO */
@@ -107,6 +271,8 @@ button:hover {
   flex: 1;
   background: #f5f5f5;
   padding: 30px;
+  overflow-y: auto;
+  height: 100vh;
 }
 
 /* CARD */
@@ -154,7 +320,7 @@ button:hover {
 }
 
 :root.dark .left-panel {
-  background: #1d4ed8 !important;
+  background: linear-gradient(150deg, #1340a0 0%, #1d4ed8 50%, #2563eb 100%) !important;
 }
 
 :root.dark .form-box h2 {
@@ -174,6 +340,14 @@ button:hover {
 /* Sidebar */
 :root.dark .sidebar {
   background: #172554 !important;
+}
+
+:root.dark .sidebar-nav-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+:root.dark .sidebar-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
 }
 
 /* Cards y formularios */

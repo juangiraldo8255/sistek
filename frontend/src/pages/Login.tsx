@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import "../styles.css";
+import logo from "../Bienvenido.png";
 
 function Login() {
 
@@ -42,7 +43,10 @@ function Login() {
 
       {/* IZQUIERDA */}
       <div className="left-panel">
-        <h1>Bienvenido a Sistek</h1>
+        <h1>Bienvenido</h1>
+        <div className="left-panel-logo">
+          <img src={logo} alt="Sistek logo" />
+        </div>
         <p>Gestiona tus tickets fácilmente</p>
       </div>
 

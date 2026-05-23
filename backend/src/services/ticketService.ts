@@ -236,7 +236,7 @@ export const getTicketHistory = async (ticketId: number) => {
      FROM ticket_historia th
      LEFT JOIN users u ON th.usuario_accion_id = u.id
      WHERE th.ticket_id = $1
-     ORDER BY th.fecha_registro ASC`,
+     ORDER BY th.fecha_registro DESC`,
     [ticketId]
   );
   return result.rows;

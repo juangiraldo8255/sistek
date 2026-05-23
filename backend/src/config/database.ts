@@ -8,9 +8,13 @@ if (!process.env.DATABASE_URL) {
   console.warn('⚠️ DATABASE_URL no está configurada. Por favor, revisa tu archivo .env');
 }
 
+const isRemoteDb = process.env.DATABASE_URL?.includes('railway') ||
+  process.env.DATABASE_URL?.includes('rlwy.net') ||
+  process.env.NODE_ENV === 'production';
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: isRemoteDb ? { rejectUnauthorized: false } : false,
 });
 
 pool.on('error', (err) => {

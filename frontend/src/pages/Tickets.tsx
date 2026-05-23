@@ -237,8 +237,13 @@ const verHistorial = async (ticketId: number) => {
   const cambiarEstado = async (ticketId: number, nuevoEstado: 'Abierto' | 'En progreso' | 'Cerrado') => {
     try {
       await ticketService.updateTicketStatus(ticketId, nuevoEstado, user.id);
-      alert("Estado actualizado");
-      cargarTickets();
+      await cargarTickets();
+      alert("Estado actualizado exitosamente");
+      // Si el historial de este ticket está abierto, refrescarlo automáticamente
+      if (showHistorialId === ticketId) {
+        const data = await ticketService.getTicketHistory(ticketId);
+        setHistorialSelected(data);
+      }
     } catch (err: any) {
       alert("Error actualizando estado: " + err.message);
     }
@@ -248,7 +253,13 @@ const verHistorial = async (ticketId: number) => {
     try {
       await ticketService.updateTicketPriority(ticketId, newPriority);
       setPrioridadSeleccionada(prev => { const n = { ...prev }; delete n[ticketId]; return n; });
-      cargarTickets();
+      await cargarTickets();
+      alert("Cambio de prioridad exitoso");
+      // Si el historial de este ticket está abierto, refrescarlo automáticamente
+      if (showHistorialId === ticketId) {
+        const data = await ticketService.getTicketHistory(ticketId);
+        setHistorialSelected(data);
+      }
     } catch (err: any) {
       alert("Error actualizando prioridad: " + err.message);
     }
@@ -277,402 +288,558 @@ const verHistorial = async (ticketId: number) => {
     commentBtn:    isDark ? "#c4b5fd"   : "#7c3aed",
   };
 
+  // Design helpers
+  const getPriorityBorder = (p: string) =>
+    p === "Alta" ? "#ef4444" : p === "Media" ? "#f59e0b" : "#10b981";
+
+  const getPriorityBadge = (p: string) => ({
+    bg: p === "Alta" ? "#fee2e2" : p === "Media" ? "#fef3c7" : "#dcfce7",
+    color: p === "Alta" ? "#991b1b" : p === "Media" ? "#92400e" : "#166534",
+  });
+
+  const getStatusBadge = (s: string) => ({
+    bg: s === "Cerrado" ? "#dcfce7" : s === "En progreso" ? "#dbeafe" : "#fef9c3",
+    color: s === "Cerrado" ? "#166534" : s === "En progreso" ? "#1d4ed8" : "#92400e",
+  });
+
   if (!user) return null;
 
   // VISTA CLIENTE
   if (user.role === "cliente") {
     return (
-      <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto", backgroundColor: dk.page, minHeight: "100vh" }}>
+      <div style={{ minHeight: "100vh", background: isDark ? "#0f172a" : "#f0f4ff", padding: "24px" }}>
 
-      {/* MODAL REAPERTURA */}
-      {reopenTicket && (
-        <ReopenModal
-          ticket={reopenTicket}
-          userRole={user.role}
-          onConfirm={async (motivo) => {
-            await ticketService.reopenTicket(reopenTicket.id, motivo);
-            setReopenTicket(null);
-            await cargarTickets();
-          }}
-          onClose={() => setReopenTicket(null)}
-        />
-      )}
-        
-        <button 
-          onClick={() => navigate("/dashboard")}
-          style={{ 
-            backgroundColor: "#6b7280", 
-            color: "white", 
-            padding: "8px 16px", 
-            border: "none", 
-            borderRadius: "4px", 
-            cursor: "pointer",
-            fontSize: "14px",
-            fontWeight: "bold",
-            marginBottom: "20px"
-          }}
-        >
-          ← Volver
-        </button>
-
-        <div style={{
-          backgroundColor: isDark ? "#1e1e1e" : "white",
-          border: `2px solid ${isDark ? "#334155" : "#3b82f6"}`,
-          borderRadius: "8px",
-          padding: "25px",
-          boxShadow: isDark ? "0 2px 8px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.1)",
-          marginBottom: "30px"
-        }}>
-          <h2 style={{ color: "#3b82f6", marginTop: "0" }}>Crear Nuevo Ticket</h2>
-          <p style={{ color: dk.textSub, marginBottom: "20px" }}>Completa el formulario para crear un nuevo ticket</p>
-
-          {error && <p style={{ color: '#ef4444' }}>{error}</p>}
-
-          <input
-            placeholder="Título del ticket"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={loading}
-            style={{ width: "100%", padding: "10px", marginBottom: "15px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", boxSizing: "border-box", backgroundColor: dk.input, color: dk.text }}
-          />
-
-          <textarea
-            placeholder="Descripción detallada"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={loading}
-            style={{ width: "100%", padding: "10px", marginBottom: "15px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", boxSizing: "border-box", minHeight: "120px", backgroundColor: dk.input, color: dk.text }}
-          />
-
-          <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              disabled={loading}
-              style={{ flex: 1, padding: "10px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", color: dk.text, backgroundColor: dk.input }}
-            >
-              <option value="Software">Software</option>
-              <option value="Hardware">Hardware</option>
-              <option value="Red">Red</option>
-              <option value="Acceso">Acceso</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-
-          <button 
-            onClick={crearTicket}
-            disabled={loading}
-            style={{ 
-              backgroundColor: "#3b82f6", 
-              color: "white", 
-              padding: "12px 24px", 
-              border: "none", 
-              borderRadius: "4px", 
-              cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: "bold"
+        {/* MODAL REAPERTURA */}
+        {reopenTicket && (
+          <ReopenModal
+            ticket={reopenTicket}
+            userRole={user.role}
+            onConfirm={async (motivo) => {
+              await ticketService.reopenTicket(reopenTicket.id, motivo);
+              setReopenTicket(null);
+              await cargarTickets();
             }}
-          >
-            {loading ? "Creando..." : "Crear Ticket"}
-          </button>
-        </div>
-
-        {/* BARRA DE BÚSQUEDA */}
-        <div style={{ display: "flex", gap: "10px", marginBottom: "15px", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Buscar por título o descripción..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && realizarBusqueda()}
-            style={{
-              flex: 1,
-              padding: "11px 16px",
-              border: `1px solid ${dk.inputBorder}`,
-              borderRadius: "4px",
-              fontSize: "14px",
-              color: dk.text,
-              backgroundColor: dk.input,
-              marginTop: "0",
-              boxSizing: "border-box"
-            }}
+            onClose={() => setReopenTicket(null)}
           />
-          <button
-            onClick={realizarBusqueda}
-            style={{
-              backgroundColor: "#3b82f6",
-              color: "white",
-              padding: "8px 18px",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              width: "auto",
-              marginTop: "0",
-              flexShrink: 0
-            }}
-          >
-            Buscar
-          </button>
-          {filtroBusqueda && (
-            <button
-              onClick={limpiarBusqueda}
-              style={{
-                backgroundColor: isDark ? "#334155" : "#e5e7eb",
-                color: isDark ? "#f1f5f9" : "#374151",
-                padding: "8px 14px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                width: "auto",
-                marginTop: "0",
-                flexShrink: 0
-              }}
-            >
-              ✕ Limpiar
-            </button>
-          )}
-        </div>
-        {filtroBusqueda && (
-          <p style={{ color: dk.textSub, fontSize: "13px", marginBottom: "10px" }}>
-            Resultados para: <strong>"{filtroBusqueda}"</strong> ({tickets.length} encontrado{tickets.length !== 1 ? "s" : ""})
-          </p>
         )}
 
-        {/* MIS TICKETS */}
-        <h3>Mis Tickets ({tickets.length})</h3>
-        {tickets.length === 0 ? (
-          <p style={{ color: dk.textSub, textAlign: "center", padding: "20px" }}>No tienes tickets creados aún</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            {tickets.map((ticket) => (
-              <div key={ticket.id} style={{
-                border: `1px solid ${dk.cardBorder}`,
-                borderRadius: "6px",
-                padding: "15px",
-                backgroundColor: dk.card
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: "0 0 5px 0", color: dk.text }}>{ticket.title}</h4>
-                    <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: dk.textSub }}>{ticket.description}</p>
-                    <div style={{ display: "flex", gap: "10px", fontSize: "13px", color: dk.textSub, flexWrap: "wrap", alignItems: "center" }}>
-                      <span>Estado: <strong>{ticket.status}</strong></span>
-                      <span style={{
-                        padding: "2px 10px",
-                        borderRadius: "12px",
-                        fontWeight: "bold",
-                        fontSize: "12px",
-                        backgroundColor: ticket.priority === "Alta" ? "#fee2e2" : ticket.priority === "Media" ? "#fef3c7" : "#dcfce7",
-                        color: ticket.priority === "Alta" ? "#991b1b" : ticket.priority === "Media" ? "#92400e" : "#166534"
-                      }}>
-                        {ticket.priority}
-                      </span>
-                      <span>Tipo: <strong>{ticket.type}</strong></span>
-                    </div>
-                  </div>
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+
+          {/* HEADER BANNER */}
+          <div style={{
+            background: isDark
+              ? "linear-gradient(135deg,#1e293b,#1e1e2e)"
+              : "linear-gradient(135deg,#2563eb,#6366f1)",
+            borderRadius: "16px",
+            padding: "24px 28px",
+            marginBottom: "24px",
+            boxShadow: "0 4px 20px rgba(37,99,235,0.25)",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            flexWrap: "wrap", gap: "12px"
+          }}>
+            <div>
+              <h1 style={{ color: "white", margin: 0, fontSize: "22px", fontWeight: "700" }}>
+                🎫 Mis Tickets
+              </h1>
+              <p style={{ color: "rgba(255,255,255,0.8)", margin: "4px 0 0 0", fontSize: "14px" }}>
+                Gestiona y crea tus tickets de soporte
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/dashboard")}
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                color: "white",
+                padding: "8px 18px",
+                border: "1px solid rgba(255,255,255,0.3)",
+                borderRadius: "10px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "600",
+                width: "auto", marginTop: "0",
+              }}
+            >
+              ← Volver
+            </button>
+          </div>
+
+          {/* FORMULARIO CREAR TICKET */}
+          <div style={{
+            background: isDark ? "#1e293b" : "white",
+            borderRadius: "14px",
+            boxShadow: isDark
+              ? "0 0 0 1px #334155, 0 4px 20px rgba(0,0,0,0.3)"
+              : "0 4px 20px rgba(0,0,0,0.08)",
+            marginBottom: "24px",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              background: isDark ? "rgba(37,99,235,0.12)" : "#eff6ff",
+              borderBottom: `1px solid ${isDark ? "#334155" : "#bfdbfe"}`,
+              padding: "18px 24px",
+            }}>
+              <h2 style={{ margin: 0, color: isDark ? "#93c5fd" : "#2563eb", fontSize: "18px", fontWeight: "700" }}>
+                ✏️ Crear Nuevo Ticket
+              </h2>
+              <p style={{ margin: "4px 0 0 0", color: dk.textSub, fontSize: "13px" }}>
+                Completa el formulario para reportar un problema de soporte
+              </p>
+            </div>
+
+            <div style={{ padding: "24px" }}>
+              {error && (
+                <div style={{
+                  background: "#fee2e2", border: "1px solid #fca5a5",
+                  borderRadius: "8px", padding: "10px 14px",
+                  color: "#991b1b", fontSize: "13px", marginBottom: "16px",
+                }}>
+                  ⚠️ {error}
                 </div>
+              )}
 
-                {/* BOTÓN REABRIR TICKET (HU-019) – solo si está cerrado */}
-                {ticket.status === "Cerrado" && (
-                  <div style={{ marginTop: "10px" }}>
-                    <button
-                      onClick={() => setReopenTicket(ticket)}
-                      style={{
-                        backgroundColor: "#6366f1", color: "white",
-                        padding: "7px 16px", border: "none", borderRadius: "6px",
-                        cursor: "pointer", fontSize: "13px", fontWeight: "bold"
-                      }}
-                    >
-                      🔄 Reabrir Ticket
-                    </button>
-                  </div>
-                )}
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: dk.label, marginBottom: "6px" }}>
+                  📌 Título del ticket
+                </label>
+                <input
+                  placeholder="Título del ticket"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: "100%", padding: "10px 14px",
+                    border: `1px solid ${dk.inputBorder}`,
+                    borderRadius: "8px", fontSize: "14px",
+                    backgroundColor: dk.input, color: dk.text,
+                    boxSizing: "border-box", outline: "none",
+                  }}
+                />
+              </div>
 
-                {/* CALIFICACIÓN (HU-021) – solo si está cerrado */}
-                {ticket.status === "Cerrado" && (
-                  <div style={{ marginTop: "10px", borderTop: `1px dashed ${dk.divider}`, paddingTop: "10px" }}>
-                    {/* Ya calificado */}
-                    {ratings[ticket.id] ? (
-                      <div style={{
-                        backgroundColor: isDark ? "#162032" : "#f0fdf4",
-                        border: `1px solid ${isDark ? "#1e4a2e" : "#86efac"}`,
-                        borderRadius: "6px", padding: "10px 14px",
-                        display: "flex", alignItems: "center", gap: "10px"
-                      }}>
-                        <span style={{ fontSize: "18px" }}>
-                          {[1,2,3,4,5].map(s => (
-                            <span key={s} style={{ color: s <= ratings[ticket.id]!.puntuacion ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db") }}>★</span>
-                          ))}
-                        </span>
-                        <span style={{ fontSize: "13px", color: isDark ? "#86efac" : "#166534" }}>
-                          Calificaste este ticket con {ratings[ticket.id]!.puntuacion}/5
-                          {ratings[ticket.id]!.comentario && ` · "${ratings[ticket.id]!.comentario}"`}
-                        </span>
+              <div style={{ marginBottom: "14px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: dk.label, marginBottom: "6px" }}>
+                  📝 Descripción
+                </label>
+                <textarea
+                  placeholder="Descripción detallada del problema"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: "100%", padding: "10px 14px",
+                    border: `1px solid ${dk.inputBorder}`,
+                    borderRadius: "8px", fontSize: "14px",
+                    resize: "vertical", minHeight: "110px",
+                    backgroundColor: dk.input, color: dk.text,
+                    boxSizing: "border-box", outline: "none",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: dk.label, marginBottom: "6px" }}>
+                  🏷️ Tipo
+                </label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: "100%", padding: "10px 14px",
+                    border: `1px solid ${dk.inputBorder}`,
+                    borderRadius: "8px", fontSize: "14px",
+                    backgroundColor: dk.input, color: dk.text,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="Software">Software</option>
+                  <option value="Hardware">Hardware</option>
+                  <option value="Red">Red</option>
+                  <option value="Acceso">Acceso</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <button
+                onClick={crearTicket}
+                disabled={loading}
+                style={{
+                  background: loading
+                    ? "#94a3b8"
+                    : "linear-gradient(135deg,#2563eb,#6366f1)",
+                  color: "white",
+                  padding: "11px 28px",
+                  border: "none",
+                  borderRadius: "10px",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontSize: "15px",
+                  fontWeight: "700",
+                  boxShadow: loading ? "none" : "0 4px 12px rgba(37,99,235,0.4)",
+                  width: "auto", marginTop: "0",
+                }}
+              >
+                {loading ? "⏳ Creando..." : "🚀 Crear Ticket"}
+              </button>
+            </div>
+          </div>
+
+          {/* BARRA DE BÚSQUEDA */}
+          <div style={{
+            background: isDark ? "#1e293b" : "white",
+            borderRadius: "12px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            boxShadow: isDark
+              ? "0 0 0 1px #334155, 0 2px 8px rgba(0,0,0,0.2)"
+              : "0 2px 8px rgba(0,0,0,0.06)",
+            display: "flex", gap: "8px", alignItems: "center",
+          }}>
+            <span style={{ fontSize: "16px", flexShrink: 0, color: "#94a3b8" }}>🔍</span>
+            <input
+              type="text"
+              placeholder="Buscar por título o descripción..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && realizarBusqueda()}
+              style={{
+                flex: 1, border: `1px solid ${dk.inputBorder}`, outline: "none",
+                fontSize: "14px", backgroundColor: dk.input, color: dk.text,
+                padding: "7px 10px", borderRadius: "6px",
+                width: "auto", marginTop: "0", boxSizing: "border-box",
+              }}
+            />
+            <button
+              onClick={realizarBusqueda}
+              style={{
+                background: "linear-gradient(135deg,#2563eb,#6366f1)",
+                color: "white", padding: "7px 16px",
+                border: "none", borderRadius: "8px",
+                cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                flexShrink: 0, width: "auto", marginTop: "0",
+              }}
+            >
+              Buscar
+            </button>
+            {filtroBusqueda && (
+              <button
+                onClick={limpiarBusqueda}
+                style={{
+                  backgroundColor: isDark ? "#334155" : "#f1f5f9",
+                  color: isDark ? "#f1f5f9" : "#374151",
+                  padding: "7px 12px", border: "none",
+                  borderRadius: "8px", cursor: "pointer",
+                  fontSize: "13px", flexShrink: 0,
+                  width: "auto", marginTop: "0",
+                }}
+              >
+                ✕ Limpiar
+              </button>
+            )}
+          </div>
+
+          {filtroBusqueda && (
+            <p style={{ color: dk.textSub, fontSize: "13px", marginBottom: "12px" }}>
+              Resultados para: <strong>"{filtroBusqueda}"</strong> — {tickets.length} encontrado{tickets.length !== 1 ? "s" : ""}
+            </p>
+          )}
+
+          {/* CABECERA LISTADO */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+            <h3 style={{ margin: 0, color: dk.text, fontSize: "16px", fontWeight: "700" }}>🎫 Mis Tickets</h3>
+            <span style={{
+              background: isDark ? "#334155" : "#e0e7ff",
+              color: isDark ? "#93c5fd" : "#3730a3",
+              borderRadius: "20px", padding: "2px 10px",
+              fontSize: "13px", fontWeight: "700",
+            }}>
+              {tickets.length}
+            </span>
+          </div>
+
+          {tickets.length === 0 ? (
+            <div style={{
+              background: isDark ? "#1e293b" : "white",
+              borderRadius: "14px", padding: "48px 24px",
+              textAlign: "center",
+              boxShadow: isDark ? "0 0 0 1px #334155" : "0 2px 8px rgba(0,0,0,0.06)",
+              color: dk.textSub,
+            }}>
+              <div style={{ fontSize: "48px", marginBottom: "12px" }}>📭</div>
+              <p style={{ margin: 0, fontSize: "15px" }}>No tienes tickets creados aún</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {tickets.map((ticket) => {
+                const pBadge = getPriorityBadge(ticket.priority);
+                const sBadge = getStatusBadge(ticket.status);
+                return (
+                  <div key={ticket.id} style={{
+                    background: isDark ? "#1e293b" : "white",
+                    borderRadius: "14px",
+                    boxShadow: isDark
+                      ? "0 0 0 1px #334155, 0 2px 12px rgba(0,0,0,0.3)"
+                      : "0 2px 12px rgba(0,0,0,0.08)",
+                    overflow: "hidden",
+                    borderLeft: `5px solid ${getPriorityBorder(ticket.priority)}`,
+                  }}>
+                    <div style={{ padding: "18px 20px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                        <h4 style={{ margin: 0, color: dk.text, fontSize: "15px", fontWeight: "700", flex: 1, marginRight: "12px" }}>
+                          {ticket.title}
+                        </h4>
+                        <div style={{ display: "flex", gap: "6px", flexShrink: 0, flexWrap: "wrap" }}>
+                          <span style={{
+                            padding: "3px 10px", borderRadius: "20px",
+                            fontSize: "11px", fontWeight: "700",
+                            backgroundColor: sBadge.bg, color: sBadge.color,
+                          }}>{ticket.status}</span>
+                          <span style={{
+                            padding: "3px 10px", borderRadius: "20px",
+                            fontSize: "11px", fontWeight: "700",
+                            backgroundColor: pBadge.bg, color: pBadge.color,
+                          }}>{ticket.priority}</span>
+                        </div>
                       </div>
-                    ) : isRatingExpired(ticket) ? (
-                      /* Plazo expirado */
-                      <div style={{
-                        backgroundColor: isDark ? "#1c1408" : "#fffbeb",
-                        border: `1px solid ${isDark ? "#78350f" : "#fcd34d"}`,
-                        borderRadius: "6px", padding: "10px 14px",
-                        fontSize: "13px", color: isDark ? "#fcd34d" : "#92400e"
-                      }}>
-                        ⏰ El plazo para calificar este ticket ha expirado (más de {EXPIRY_DAYS} días desde el cierre).
+                      <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: dk.textSub, lineHeight: "1.5" }}>
+                        {ticket.description}
+                      </p>
+                      <div style={{ display: "flex", gap: "14px", fontSize: "12px", color: dk.textSub, flexWrap: "wrap" }}>
+                        <span>🏷️ <strong>{ticket.type}</strong></span>
                       </div>
-                    ) : (
-                      /* Formulario de calificación */
-                      <>
+                    </div>
+
+                    {/* BOTÓN REABRIR TICKET (HU-019) */}
+                    {ticket.status === "Cerrado" && (
+                      <div style={{ padding: "0 20px 14px" }}>
                         <button
-                          onClick={() => setShowRatingId(showRatingId === ticket.id ? null : ticket.id)}
+                          onClick={() => setReopenTicket(ticket)}
                           style={{
-                            background: "none", border: "none",
-                            color: isDark ? "#fbbf24" : "#d97706",
-                            fontSize: "13px", fontWeight: "bold",
-                            cursor: "pointer", padding: "0",
-                            display: "flex", alignItems: "center", gap: "5px"
+                            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                            color: "white",
+                            padding: "7px 16px", border: "none", borderRadius: "8px",
+                            cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                            boxShadow: "0 2px 8px rgba(99,102,241,0.35)",
+                            width: "auto", marginTop: "0",
                           }}
                         >
-                          {showRatingId === ticket.id ? "▲ Ocultar calificación" : "⭐ Calificar atención"}
+                          🔄 Reabrir Ticket
                         </button>
+                      </div>
+                    )}
 
-                        {showRatingId === ticket.id && (
+                    {/* CALIFICACIÓN (HU-021) – solo si está cerrado */}
+                    {ticket.status === "Cerrado" && (
+                      <div style={{ borderTop: `1px solid ${isDark ? "#334155" : "#f1f5f9"}`, padding: "14px 20px" }}>
+                        {/* Ya calificado */}
+                        {ratings[ticket.id] ? (
                           <div style={{
-                            marginTop: "10px",
-                            backgroundColor: dk.expanded,
-                            padding: "14px",
-                            borderRadius: "6px",
-                            border: `1px solid ${dk.expandedBorder}`
+                            background: isDark ? "#162032" : "#f0fdf4",
+                            border: `1px solid ${isDark ? "#1e4a2e" : "#86efac"}`,
+                            borderRadius: "8px", padding: "10px 14px",
+                            display: "flex", alignItems: "center", gap: "10px",
                           }}>
-                            <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: dk.label, fontWeight: "600" }}>
-                              ¿Cómo calificarías la atención recibida?
-                            </p>
-
-                            {/* Estrellas interactivas */}
-                            <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
-                              {[1,2,3,4,5].map(star => (
-                                <button
-                                  key={star}
-                                  onClick={() => setRatingPuntuacion(prev => ({ ...prev, [ticket.id]: star }))}
-                                  style={{
-                                    background: "none", border: "none",
-                                    fontSize: "28px", cursor: "pointer", padding: "0",
-                                    color: star <= (ratingPuntuacion[ticket.id] || 0) ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db"),
-                                    transition: "color 0.1s"
-                                  }}
-                                  title={`${star} estrella${star > 1 ? "s" : ""}`}
-                                >
-                                  ★
-                                </button>
+                            <span style={{ fontSize: "18px" }}>
+                              {[1,2,3,4,5].map(s => (
+                                <span key={s} style={{ color: s <= ratings[ticket.id]!.puntuacion ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db") }}>★</span>
                               ))}
-                              {ratingPuntuacion[ticket.id] > 0 && (
-                                <span style={{ fontSize: "13px", color: dk.textSub, alignSelf: "center", marginLeft: "4px" }}>
-                                  {ratingPuntuacion[ticket.id]}/5
-                                </span>
-                              )}
-                            </div>
+                            </span>
+                            <span style={{ fontSize: "13px", color: isDark ? "#86efac" : "#166534" }}>
+                              Calificaste este ticket con {ratings[ticket.id]!.puntuacion}/5
+                              {ratings[ticket.id]!.comentario && ` · "${ratings[ticket.id]!.comentario}"`}
+                            </span>
+                          </div>
+                        ) : isRatingExpired(ticket) ? (
+                          /* Plazo expirado */
+                          <div style={{
+                            background: isDark ? "#1c1408" : "#fffbeb",
+                            border: `1px solid ${isDark ? "#78350f" : "#fcd34d"}`,
+                            borderRadius: "8px", padding: "10px 14px",
+                            fontSize: "13px", color: isDark ? "#fcd34d" : "#92400e",
+                          }}>
+                            ⏰ El plazo para calificar este ticket ha expirado (más de {EXPIRY_DAYS} días desde el cierre).
+                          </div>
+                        ) : (
+                          /* Formulario de calificación */
+                          <>
+                            <button
+                              onClick={() => setShowRatingId(showRatingId === ticket.id ? null : ticket.id)}
+                              style={{
+                                background: isDark ? "#2d2a14" : "#fffbeb",
+                                border: `1px solid ${isDark ? "#78350f" : "#fcd34d"}`,
+                                color: isDark ? "#fbbf24" : "#d97706",
+                                fontSize: "13px", fontWeight: "600",
+                                cursor: "pointer", padding: "6px 14px",
+                                borderRadius: "8px",
+                                display: "flex", alignItems: "center", gap: "6px",
+                                width: "auto", marginTop: "0",
+                              }}
+                            >
+                              {showRatingId === ticket.id ? "▲ Ocultar calificación" : "⭐ Calificar atención"}
+                            </button>
 
-                            {/* Comentario opcional */}
+                            {showRatingId === ticket.id && (
+                              <div style={{
+                                marginTop: "12px",
+                                background: isDark ? "#0f172a" : "#fafafa",
+                                padding: "16px", borderRadius: "10px",
+                                border: `1px solid ${dk.expandedBorder}`,
+                              }}>
+                                <p style={{ margin: "0 0 10px 0", fontSize: "13px", color: dk.label, fontWeight: "600" }}>
+                                  ¿Cómo calificarías la atención recibida?
+                                </p>
+
+                                {/* Estrellas interactivas */}
+                                <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
+                                  {[1,2,3,4,5].map(star => (
+                                    <button
+                                      key={star}
+                                      onClick={() => setRatingPuntuacion(prev => ({ ...prev, [ticket.id]: star }))}
+                                      style={{
+                                        background: "none", border: "none",
+                                        fontSize: "28px", cursor: "pointer", padding: "0",
+                                        color: star <= (ratingPuntuacion[ticket.id] || 0) ? "#f59e0b" : (isDark ? "#475569" : "#d1d5db"),
+                                        transition: "color 0.1s",
+                                      }}
+                                      title={`${star} estrella${star > 1 ? "s" : ""}`}
+                                    >★</button>
+                                  ))}
+                                  {ratingPuntuacion[ticket.id] > 0 && (
+                                    <span style={{ fontSize: "13px", color: dk.textSub, alignSelf: "center", marginLeft: "4px" }}>
+                                      {ratingPuntuacion[ticket.id]}/5
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Comentario opcional */}
+                                <textarea
+                                  value={ratingComentario[ticket.id] || ""}
+                                  onChange={e => setRatingComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                                  placeholder="Comentario opcional (¿qué podemos mejorar?)"
+                                  style={{
+                                    width: "100%", padding: "8px",
+                                    border: `1px solid ${dk.inputBorder}`,
+                                    borderRadius: "8px", fontSize: "13px",
+                                    resize: "vertical", minHeight: "56px",
+                                    boxSizing: "border-box",
+                                    backgroundColor: dk.input, color: dk.text,
+                                  }}
+                                />
+
+                                {ratingError[ticket.id] && (
+                                  <p style={{ fontSize: "12px", color: "#ef4444", margin: "6px 0 0 0" }}>
+                                    {ratingError[ticket.id]}
+                                  </p>
+                                )}
+
+                                <button
+                                  onClick={() => enviarRating(ticket.id)}
+                                  disabled={enviandoRating || !ratingPuntuacion[ticket.id]}
+                                  style={{
+                                    marginTop: "8px",
+                                    background: (enviandoRating || !ratingPuntuacion[ticket.id])
+                                      ? "#94a3b8"
+                                      : "linear-gradient(135deg,#f59e0b,#d97706)",
+                                    color: "white",
+                                    padding: "8px 20px", border: "none",
+                                    borderRadius: "8px",
+                                    cursor: (enviandoRating || !ratingPuntuacion[ticket.id]) ? "not-allowed" : "pointer",
+                                    fontSize: "13px", fontWeight: "700",
+                                    boxShadow: (enviandoRating || !ratingPuntuacion[ticket.id])
+                                      ? "none"
+                                      : "0 2px 8px rgba(245,158,11,0.4)",
+                                    width: "auto", marginTop: "0",
+                                  }}
+                                >
+                                  {enviandoRating ? "Enviando..." : "Enviar calificación"}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SECCIÓN DE COMENTARIOS */}
+                    <div style={{ borderTop: `1px solid ${isDark ? "#334155" : "#f1f5f9"}`, padding: "12px 20px" }}>
+                      <button
+                        onClick={() => verComentarios(ticket.id)}
+                        style={{
+                          background: "none", border: "none",
+                          color: dk.commentBtn, fontSize: "13px", fontWeight: "600",
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", padding: "0",
+                          width: "auto", marginTop: "0",
+                        }}
+                      >
+                        {showCommentsId === ticket.id ? "▲ Ocultar Comentarios" : "💬 Ver Comentarios"}
+                        {loadingComentarios && showCommentsId === ticket.id && " (Cargando...)"}
+                      </button>
+
+                      {showCommentsId === ticket.id && (
+                        <div style={{ marginTop: "10px", background: dk.expanded, padding: "12px", borderRadius: "8px", border: `1px solid ${dk.expandedBorder}` }}>
+                          {comentarios.length === 0 ? (
+                            <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún. ¡Sé el primero!</p>
+                          ) : (
+                            <div style={{ marginBottom: "12px", maxHeight: "220px", overflowY: "auto" }}>
+                              {comentarios.map((c) => (
+                                <div key={c.id} style={{ padding: "8px 0", borderBottom: `1px solid ${dk.divider}` }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                                    <span style={{ fontSize: "12px", fontWeight: "bold", color: dk.text }}>{c.autor}</span>
+                                    <span style={{ fontSize: "11px", color: dk.textSub }}>
+                                      {new Date(c.created_at).toLocaleString('es-ES', { hour12: false })}
+                                    </span>
+                                  </div>
+                                  <p style={{ margin: "0", fontSize: "13px", color: dk.label }}>{c.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div>
+                            {errorComentario[ticket.id] && (
+                              <p style={{ fontSize: "12px", color: "#ef4444", margin: "0 0 4px 0" }}>{errorComentario[ticket.id]}</p>
+                            )}
                             <textarea
-                              value={ratingComentario[ticket.id] || ""}
-                              onChange={e => setRatingComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                              placeholder="Comentario opcional (¿qué podemos mejorar?)"
+                              value={nuevoComentario[ticket.id] || ""}
+                              onChange={(e) => setNuevoComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                              placeholder="Escribe un comentario..."
                               style={{
                                 width: "100%", padding: "8px",
                                 border: `1px solid ${dk.inputBorder}`,
-                                borderRadius: "4px", fontSize: "13px",
-                                resize: "vertical", minHeight: "56px",
+                                borderRadius: "6px", fontSize: "13px",
+                                resize: "vertical", minHeight: "60px",
                                 boxSizing: "border-box",
-                                backgroundColor: dk.input, color: dk.text
+                                backgroundColor: dk.input, color: dk.text,
                               }}
                             />
-
-                            {ratingError[ticket.id] && (
-                              <p style={{ fontSize: "12px", color: "#ef4444", margin: "6px 0 0 0" }}>
-                                {ratingError[ticket.id]}
-                              </p>
-                            )}
-
                             <button
-                              onClick={() => enviarRating(ticket.id)}
-                              disabled={enviandoRating || !ratingPuntuacion[ticket.id]}
+                              onClick={() => enviarComentario(ticket.id)}
+                              disabled={enviandoComentario}
                               style={{
-                                marginTop: "8px",
-                                backgroundColor: (enviandoRating || !ratingPuntuacion[ticket.id]) ? "#94a3b8" : "#f59e0b",
-                                color: "white",
-                                padding: "7px 18px", border: "none",
-                                borderRadius: "4px", cursor: (enviandoRating || !ratingPuntuacion[ticket.id]) ? "not-allowed" : "pointer",
-                                fontSize: "13px", fontWeight: "bold"
+                                marginTop: "6px",
+                                background: "linear-gradient(135deg,#7c3aed,#6366f1)",
+                                color: "white", padding: "6px 16px",
+                                border: "none", borderRadius: "6px",
+                                cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                                boxShadow: "0 2px 6px rgba(124,58,237,0.35)",
+                                width: "auto", marginTop: "0",
                               }}
                             >
-                              {enviandoRating ? "Enviando..." : "Enviar calificación"}
+                              {enviandoComentario ? "Enviando..." : "💬 Comentar"}
                             </button>
                           </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* SECCIÓN DE COMENTARIOS */}
-                <div style={{ marginTop: "12px", borderTop: `1px dashed ${dk.divider}`, paddingTop: "10px" }}>
-                  <button
-                    onClick={() => verComentarios(ticket.id)}
-                    style={{ background: "none", border: "none", color: dk.commentBtn, fontSize: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", padding: "0" }}
-                  >
-                    {showCommentsId === ticket.id ? "▲ Ocultar Comentarios" : "▼ Ver Comentarios"}
-                    {loadingComentarios && showCommentsId === ticket.id && " (Cargando...)"}
-                  </button>
-
-                  {showCommentsId === ticket.id && (
-                    <div style={{ marginTop: "10px", backgroundColor: dk.expanded, padding: "12px", borderRadius: "6px", border: `1px solid ${dk.expandedBorder}` }}>
-                      {comentarios.length === 0 ? (
-                        <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún. ¡Sé el primero!</p>
-                      ) : (
-                        <div style={{ marginBottom: "12px", maxHeight: "220px", overflowY: "auto" }}>
-                          {comentarios.map((c) => (
-                            <div key={c.id} style={{ padding: "8px 0", borderBottom: `1px solid ${dk.divider}` }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                                <span style={{ fontSize: "12px", fontWeight: "bold", color: dk.text }}>{c.autor}</span>
-                                <span style={{ fontSize: "11px", color: dk.textSub }}>
-                                  {new Date(c.created_at).toLocaleString('es-ES', { hour12: false })}
-                                </span>
-                              </div>
-                              <p style={{ margin: "0", fontSize: "13px", color: dk.label }}>{c.content}</p>
-                            </div>
-                          ))}
                         </div>
                       )}
-                      <div>
-                        {errorComentario[ticket.id] && (
-                          <p style={{ fontSize: "12px", color: "#ef4444", margin: "0 0 4px 0" }}>{errorComentario[ticket.id]}</p>
-                        )}
-                        <textarea
-                          value={nuevoComentario[ticket.id] || ""}
-                          onChange={(e) => setNuevoComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                          placeholder="Escribe un comentario..."
-                          style={{ width: "100%", padding: "8px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", fontSize: "13px", resize: "vertical", minHeight: "60px", boxSizing: "border-box", backgroundColor: dk.input, color: dk.text }}
-                        />
-                        <button
-                          onClick={() => enviarComentario(ticket.id)}
-                          disabled={enviandoComentario}
-                          style={{ marginTop: "6px", backgroundColor: "#7c3aed", color: "white", padding: "6px 16px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
-                        >
-                          {enviandoComentario ? "Enviando..." : "Comentar"}
-                        </button>
-                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* ADJUNTOS (HU-020) */}
-                <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
-              </div>
-            ))}
-          </div>
-        )}
+                    {/* ADJUNTOS (HU-020) */}
+                    <div style={{ borderTop: `1px solid ${isDark ? "#334155" : "#f1f5f9"}`, padding: "0 20px 16px" }}>
+                      <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -680,384 +847,492 @@ const verHistorial = async (ticketId: number) => {
   // VISTA AGENTE
   if (user.role === "agente") {
     return (
-      <div style={{ padding: "20px", maxWidth: "1000px", margin: "0 auto" }}>
+      <div style={{ minHeight: "100vh", background: isDark ? "#0f172a" : "#f0f4ff", padding: "24px" }}>
 
-      {/* MODAL REAPERTURA */}
-      {reopenTicket && (
-        <ReopenModal
-          ticket={reopenTicket}
-          userRole={user.role}
-          onConfirm={async (motivo) => {
-            await ticketService.reopenTicket(reopenTicket.id, motivo);
-            setReopenTicket(null);
-            await cargarTickets();
-          }}
-          onClose={() => setReopenTicket(null)}
-        />
-      )}
-        
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h1 style={{ margin: "0" }}>Mis Tickets Asignados</h1>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              onClick={() => setSortByPriority(s => !s)}
-              style={{
-                backgroundColor: sortByPriority ? "#6366f1" : "#e5e7eb",
-                color: sortByPriority ? "white" : "#374151",
-                padding: "8px 16px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "bold"
-              }}
-            >
-              ↕ {sortByPriority ? "Orden: Prioridad" : "Ordenar por Prioridad"}
-            </button>
-            <button
-              onClick={() => cargarTickets()}
-              style={{ backgroundColor: "#10b981", color: "white", padding: "8px 16px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px", fontWeight: "bold" }}
-            >
-              🔄 Refrescar
-            </button>
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{ backgroundColor: "#6b7280", color: "white", padding: "8px 16px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px", fontWeight: "bold" }}
-            >
-              ← Volver
-            </button>
-          </div>
-        </div>
-
-        {/* BARRA DE BÚSQUEDA */}
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Buscar por título o descripción..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && realizarBusqueda()}
-            style={{
-              flex: 1,
-              padding: "11px 16px",
-              border: "1px solid #d1d5db",
-              borderRadius: "4px",
-              fontSize: "14px",
-              color: "#1f2937",
-              backgroundColor: "white",
-              marginTop: "0",
-              boxSizing: "border-box"
+        {/* MODAL REAPERTURA */}
+        {reopenTicket && (
+          <ReopenModal
+            ticket={reopenTicket}
+            userRole={user.role}
+            onConfirm={async (motivo) => {
+              await ticketService.reopenTicket(reopenTicket.id, motivo);
+              setReopenTicket(null);
+              await cargarTickets();
             }}
+            onClose={() => setReopenTicket(null)}
           />
-          <button
-            onClick={realizarBusqueda}
-            style={{
-              backgroundColor: "#3b82f6",
-              color: "white",
-              padding: "8px 18px",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              width: "auto",
-              marginTop: "0",
-              flexShrink: 0
-            }}
-          >
-            Buscar
-          </button>
-          {filtroBusqueda && (
-            <button
-              onClick={limpiarBusqueda}
-              style={{
-                backgroundColor: "#e5e7eb",
-                color: "#374151",
-                padding: "8px 14px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                width: "auto",
-                marginTop: "0",
-                flexShrink: 0
-              }}
-            >
-              ✕ Limpiar
-            </button>
-          )}
-        </div>
-
-        {filtroBusqueda && (
-          <p style={{ color: "#6b7280", fontSize: "13px", marginBottom: "10px" }}>
-            Resultados para: <strong>"{filtroBusqueda}"</strong> ({tickets.length} encontrado{tickets.length !== 1 ? "s" : ""})
-          </p>
         )}
 
-        {tickets.length === 0 ? (
-          <p style={{ color: "#666", textAlign: "center", padding: "20px" }}>
-            {filtroBusqueda
-              ? `No se encontraron tickets con "${filtroBusqueda}"`
-              : "No tienes tickets asignados"}
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            {(sortByPriority
-              ? [...tickets].sort((a, b) => (PRIORIDAD_ORDEN[a.priority] ?? 4) - (PRIORIDAD_ORDEN[b.priority] ?? 4))
-              : tickets
-            ).map((ticket) => (
-              <div key={ticket.id} style={{
-                border: `3px solid ${dk.cardBorder}`,
-                borderRadius: "6px",
-                padding: "15px",
-                backgroundColor: dk.card
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "12px" }}>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: "0 0 5px 0", color: dk.text }}>{ticket.title}</h3>
-                    <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: dk.textSub }}>{ticket.description}</p>
-                    <div style={{ display: "flex", gap: "10px", fontSize: "13px", color: dk.textSub, flexWrap: "wrap", alignItems: "center" }}>
-                      <span>Estado: <strong>{ticket.status}</strong></span>
-                      <span
-                        style={{
-                          padding: "2px 10px",
-                          borderRadius: "12px",
-                          fontWeight: "bold",
-                          fontSize: "12px",
-                          backgroundColor: ticket.priority === "Alta" ? "#fee2e2" : ticket.priority === "Media" ? "#fef3c7" : "#dcfce7",
-                          color: ticket.priority === "Alta" ? "#991b1b" : ticket.priority === "Media" ? "#92400e" : "#166534"
-                        }}
-                      >
-                        {ticket.priority}
-                      </span>
-                      <span>Tipo: <strong>{ticket.type}</strong></span>
-                      <span>Creado: <strong>{new Date(ticket.created_at).toLocaleDateString()}</strong></span>
-                    </div>
-                  </div>
-                </div>
+        <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
 
-                {/* CAMBIAR ESTADO */}
-                <div style={{ backgroundColor: dk.panelEstado, padding: "12px", borderRadius: "4px", marginTop: "10px", borderLeft: "4px solid #f59e0b" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: dk.labelEstado, marginBottom: "8px" }}>
-                    Cambiar Estado:
-                  </label>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <select
-                      onChange={(e) => setEstadoSeleccionado({...estadoSeleccionado, [ticket.id]: e.target.value})}
-                      style={{
-                        padding: "8px",
-                        border: `1px solid ${dk.inputBorder}`,
-                        borderRadius: "4px",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        flex: 1,
-                        backgroundColor: dk.input,
-                        color: dk.text
-                      }}
-                    >
-                      <option value="">Selecciona un estado...</option>
-                      {ticket.status !== "Abierto" && <option value="Abierto">Abierto</option>}
-                      {ticket.status !== "En progreso" && <option value="En progreso">En progreso</option>}
-                      {ticket.status !== "Cerrado" && <option value="Cerrado">Cerrado</option>}
-                    </select>
-                    <button
-                      onClick={() => {
-                        const nuevoEstado = estadoSeleccionado[ticket.id] as 'Abierto' | 'En progreso' | 'Cerrado';
-                        if (nuevoEstado) cambiarEstado(ticket.id, nuevoEstado);
-                      }}
-                      style={{
-                        backgroundColor: "#f59e0b",
-                        color: "white",
-                        padding: "8px 16px",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        fontSize: "13px",
-                        fontWeight: "bold"
-                      }}
-                    >
-                      Actualizar
-                    </button>
-                  </div>
-                </div>
+          {/* HEADER BANNER */}
+          <div style={{
+            background: isDark
+              ? "linear-gradient(135deg,#1e293b,#1e1e2e)"
+              : "linear-gradient(135deg,#2563eb,#6366f1)",
+            borderRadius: "16px",
+            padding: "24px 28px",
+            marginBottom: "24px",
+            boxShadow: "0 4px 20px rgba(37,99,235,0.25)",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            flexWrap: "wrap", gap: "12px",
+          }}>
+            <div>
+              <h1 style={{ color: "white", margin: 0, fontSize: "22px", fontWeight: "700" }}>
+                🎯 Mis Tickets Asignados
+              </h1>
+              <p style={{ color: "rgba(255,255,255,0.8)", margin: "4px 0 0 0", fontSize: "14px" }}>
+                {tickets.length} ticket{tickets.length !== 1 ? "s" : ""} asignado{tickets.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                onClick={() => setSortByPriority(s => !s)}
+                style={{
+                  background: sortByPriority ? "rgba(99,102,241,0.9)" : "rgba(255,255,255,0.15)",
+                  color: "white",
+                  padding: "8px 16px",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  width: "auto", marginTop: "0",
+                }}
+              >
+                ↕ {sortByPriority ? "Por Prioridad" : "Ordenar"}
+              </button>
+              <button
+                onClick={() => cargarTickets()}
+                style={{
+                  background: "rgba(16,185,129,0.8)",
+                  color: "white",
+                  padding: "8px 16px",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  width: "auto", marginTop: "0",
+                }}
+              >
+                🔄 Refrescar
+              </button>
+              <button
+                onClick={() => navigate("/dashboard")}
+                style={{
+                  background: "rgba(255,255,255,0.15)",
+                  color: "white",
+                  padding: "8px 16px",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  width: "auto", marginTop: "0",
+                }}
+              >
+                ← Volver
+              </button>
+            </div>
+          </div>
 
-                {/* CAMBIAR PRIORIDAD */}
-                <div style={{ backgroundColor: dk.panelPriority, padding: "12px", borderRadius: "4px", marginTop: "10px", borderLeft: "4px solid #f97316" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "bold", color: dk.labelPriority, marginBottom: "8px" }}>
-                    Cambiar Prioridad:
-                  </label>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <select
-                      value={prioridadSeleccionada[ticket.id] ?? ""}
-                      onChange={(e) => setPrioridadSeleccionada(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                      style={{ padding: "8px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", fontSize: "13px", flex: 1, backgroundColor: dk.input, color: dk.text }}
-                    >
-                      <option value="">Selecciona prioridad...</option>
-                      {PRIORIDADES.filter(p => p !== ticket.priority).map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => {
-                        const p = prioridadSeleccionada[ticket.id] as PrioridadTicket;
-                        if (p) cambiarPrioridad(ticket.id, p);
-                      }}
-                      disabled={!prioridadSeleccionada[ticket.id]}
-                      style={{
-                        backgroundColor: prioridadSeleccionada[ticket.id] ? "#f97316" : "#d1d5db",
-                        color: "white",
-                        padding: "8px 16px",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: prioridadSeleccionada[ticket.id] ? "pointer" : "not-allowed",
-                        fontSize: "13px",
-                        fontWeight: "bold"
-                      }}
-                    >
-                      Actualizar
-                    </button>
-                  </div>
-                </div>
+          {/* BARRA DE BÚSQUEDA */}
+          <div style={{
+            background: isDark ? "#1e293b" : "white",
+            borderRadius: "12px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            boxShadow: isDark
+              ? "0 0 0 1px #334155, 0 2px 8px rgba(0,0,0,0.2)"
+              : "0 2px 8px rgba(0,0,0,0.06)",
+            display: "flex", gap: "8px", alignItems: "center",
+          }}>
+            <span style={{ fontSize: "16px", flexShrink: 0, color: "#94a3b8" }}>🔍</span>
+            <input
+              type="text"
+              placeholder="Buscar por título o descripción..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && realizarBusqueda()}
+              style={{
+                flex: 1, border: `1px solid ${dk.inputBorder}`, outline: "none",
+                fontSize: "14px", backgroundColor: dk.input, color: dk.text,
+                padding: "7px 10px", borderRadius: "6px",
+                width: "auto", marginTop: "0", boxSizing: "border-box",
+              }}
+            />
+            <button
+              onClick={realizarBusqueda}
+              style={{
+                background: "linear-gradient(135deg,#2563eb,#6366f1)",
+                color: "white", padding: "7px 16px",
+                border: "none", borderRadius: "8px",
+                cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                flexShrink: 0, width: "auto", marginTop: "0",
+              }}
+            >
+              Buscar
+            </button>
+            {filtroBusqueda && (
+              <button
+                onClick={limpiarBusqueda}
+                style={{
+                  backgroundColor: isDark ? "#334155" : "#f1f5f9",
+                  color: isDark ? "#f1f5f9" : "#374151",
+                  padding: "7px 12px", border: "none",
+                  borderRadius: "8px", cursor: "pointer",
+                  fontSize: "13px", flexShrink: 0,
+                  width: "auto", marginTop: "0",
+                }}
+              >
+                ✕ Limpiar
+              </button>
+            )}
+          </div>
 
-              {/* BOTÓN REABRIR TICKET (HU-019) – solo si está cerrado */}
-              {ticket.status === "Cerrado" && (
-                <div style={{ marginTop: "12px" }}>
-                  <button
-                    onClick={() => setReopenTicket(ticket)}
-                    style={{
-                      backgroundColor: "#6366f1", color: "white",
-                      padding: "7px 16px", border: "none", borderRadius: "6px",
-                      cursor: "pointer", fontSize: "13px", fontWeight: "bold"
-                    }}
-                  >
-                    🔄 Reabrir Ticket
-                  </button>
-                </div>
-              )}
+          {filtroBusqueda && (
+            <p style={{ color: dk.textSub, fontSize: "13px", marginBottom: "12px" }}>
+              Resultados para: <strong>"{filtroBusqueda}"</strong> — {tickets.length} encontrado{tickets.length !== 1 ? "s" : ""}
+            </p>
+          )}
 
-              {/* --- SECCIÓN DE HISTORIAL PARA EL AGENTE (HU-007) --- */}
-<div style={{ marginTop: "15px", borderTop: `1px dashed ${dk.divider}`, paddingTop: "10px" }}>
-  <button
-    onClick={() => verHistorial(ticket.id)}
-    style={{
-      background: "none",
-      border: "none",
-      color: dk.histBtn,
-      fontSize: "13px",
-      fontWeight: "bold",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: "5px",
-      padding: "0"
-    }}
-  >
-    {showHistorialId === ticket.id ? "▲ Ocultar Actividad" : "▼ Ver Actividad Reciente"}
-    {loadingHistorial && showHistorialId === ticket.id && " (Cargando...)"}
-  </button>
-
-  {showHistorialId === ticket.id && (
-    <div style={{
-      marginTop: "10px",
-      backgroundColor: dk.expanded,
-      padding: "10px",
-      borderRadius: "6px",
-      border: `1px solid ${dk.expandedBorder}`,
-      maxHeight: "200px",
-      overflowY: "auto"
-    }}>
-      {historialSelected.length === 0 ? (
-        <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center" }}>No hay registros aún.</p>
-      ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {historialSelected.map((h, index) => (
-            <li key={index} style={{
-              fontSize: "12px",
-              padding: "8px 0",
-              borderBottom: index !== historialSelected.length - 1 ? `1px solid ${dk.divider}` : "none"
+          {tickets.length === 0 ? (
+            <div style={{
+              background: isDark ? "#1e293b" : "white",
+              borderRadius: "14px", padding: "48px 24px",
+              textAlign: "center",
+              boxShadow: isDark ? "0 0 0 1px #334155" : "0 2px 8px rgba(0,0,0,0.06)",
+              color: dk.textSub,
             }}>
-              <div style={{ color: dk.text, fontWeight: "600" }}>
-                {h.tipo_accion === 'status_change'
-                  ? '🔄 Cambio de Estado'
-                  : h.tipo_accion === 'priority_change'
-                  ? '🎯 Cambio de Prioridad'
-                  : h.tipo_accion === 'reopen'
-                  ? '🔄 Reapertura'
-                  : '👤 Asignación de Agente'}
-              </div>
-              <div style={{ color: dk.label }}>
-                {h.tipo_accion === 'status_change' || h.tipo_accion === 'priority_change' || h.tipo_accion === 'reopen'
-                  ? `De "${h.valor_anterior}" a "${h.valor_nuevo}"`
-                  : `Asignado a Agente ID: ${h.valor_nuevo}`}
-              </div>
-              <div style={{ fontSize: "11px", color: dk.textSub, marginTop: "2px" }}>
-                {new Date(new Date(h.fecha_registro + (h.fecha_registro.includes('Z') ? '' : 'Z')).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-ES', { hour12: false })} • Por Usuario ID: {h.usuario_accion_id}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )}
-</div>
+              <div style={{ fontSize: "48px", marginBottom: "12px" }}>📭</div>
+              <p style={{ margin: 0, fontSize: "15px" }}>
+                {filtroBusqueda
+                  ? `No se encontraron tickets con "${filtroBusqueda}"`
+                  : "No tienes tickets asignados"}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {(sortByPriority
+                ? [...tickets].sort((a, b) => (PRIORIDAD_ORDEN[a.priority] ?? 4) - (PRIORIDAD_ORDEN[b.priority] ?? 4))
+                : tickets
+              ).map((ticket) => {
+                const pBadge = getPriorityBadge(ticket.priority);
+                const sBadge = getStatusBadge(ticket.status);
+                return (
+                  <div key={ticket.id} style={{
+                    background: isDark ? "#1e293b" : "white",
+                    borderRadius: "14px",
+                    boxShadow: isDark
+                      ? "0 0 0 1px #334155, 0 2px 16px rgba(0,0,0,0.3)"
+                      : "0 2px 16px rgba(0,0,0,0.08)",
+                    overflow: "hidden",
+                    borderLeft: `5px solid ${getPriorityBorder(ticket.priority)}`,
+                  }}>
+                    <div style={{ padding: "20px" }}>
+                      {/* Ticket header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                        <h3 style={{ margin: 0, color: dk.text, fontSize: "16px", fontWeight: "700", flex: 1, marginRight: "12px" }}>
+                          {ticket.title}
+                        </h3>
+                        <div style={{ display: "flex", gap: "6px", flexShrink: 0, flexWrap: "wrap" }}>
+                          <span style={{
+                            padding: "3px 10px", borderRadius: "20px",
+                            fontSize: "11px", fontWeight: "700",
+                            backgroundColor: sBadge.bg, color: sBadge.color,
+                          }}>{ticket.status}</span>
+                          <span style={{
+                            padding: "3px 10px", borderRadius: "20px",
+                            fontSize: "11px", fontWeight: "700",
+                            backgroundColor: pBadge.bg, color: pBadge.color,
+                          }}>{ticket.priority}</span>
+                        </div>
+                      </div>
+                      <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: dk.textSub, lineHeight: "1.5" }}>
+                        {ticket.description}
+                      </p>
+                      <div style={{ display: "flex", gap: "14px", fontSize: "12px", color: dk.textSub, flexWrap: "wrap" }}>
+                        <span>🏷️ <strong>{ticket.type}</strong></span>
+                        <span>📅 <strong>{new Date(ticket.created_at).toLocaleDateString()}</strong></span>
+                      </div>
 
-              {/* --- SECCIÓN DE COMENTARIOS (AGENTE) --- */}
-              <div style={{ marginTop: "10px", borderTop: `1px dashed ${dk.divider}`, paddingTop: "10px" }}>
-                <button
-                  onClick={() => verComentarios(ticket.id)}
-                  style={{ background: "none", border: "none", color: dk.commentBtn, fontSize: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", padding: "0" }}
-                >
-                  {showCommentsId === ticket.id ? "▲ Ocultar Comentarios" : "▼ Ver Comentarios"}
-                  {loadingComentarios && showCommentsId === ticket.id && " (Cargando...)"}
-                </button>
+                      {/* CAMBIAR ESTADO */}
+                      <div style={{
+                        background: isDark ? "rgba(37,99,235,0.12)" : "#eff6ff",
+                        borderRadius: "10px", padding: "14px 16px", marginTop: "14px",
+                        border: `1px solid ${isDark ? "#2d4a8a" : "#bfdbfe"}`,
+                        borderLeft: "4px solid #3b82f6",
+                      }}>
+                        <label style={{
+                          display: "block", fontSize: "11px", fontWeight: "700",
+                          color: isDark ? "#93c5fd" : "#2563eb",
+                          marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px",
+                        }}>
+                          📋 Cambiar Estado
+                        </label>
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                          <select
+                            onChange={(e) => setEstadoSeleccionado({...estadoSeleccionado, [ticket.id]: e.target.value})}
+                            style={{
+                              padding: "8px 12px",
+                              border: `1px solid ${dk.inputBorder}`,
+                              borderRadius: "8px",
+                              fontSize: "13px",
+                              cursor: "pointer",
+                              flex: 1,
+                              backgroundColor: dk.input,
+                              color: dk.text,
+                            }}
+                          >
+                            <option value="">Selecciona un estado...</option>
+                            {ticket.status !== "Abierto" && <option value="Abierto">Abierto</option>}
+                            {ticket.status !== "En progreso" && <option value="En progreso">En progreso</option>}
+                            {ticket.status !== "Cerrado" && <option value="Cerrado">Cerrado</option>}
+                          </select>
+                          <button
+                            onClick={() => {
+                              const nuevoEstado = estadoSeleccionado[ticket.id] as 'Abierto' | 'En progreso' | 'Cerrado';
+                              if (nuevoEstado) cambiarEstado(ticket.id, nuevoEstado);
+                            }}
+                            style={{
+                              background: "linear-gradient(135deg,#3b82f6,#2563eb)",
+                              color: "white",
+                              padding: "8px 18px",
+                              border: "none",
+                              borderRadius: "8px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              fontWeight: "700",
+                              boxShadow: "0 2px 8px rgba(59,130,246,0.4)",
+                              flexShrink: 0,
+                              width: "auto", marginTop: "0",
+                            }}
+                          >
+                            Actualizar
+                          </button>
+                        </div>
+                      </div>
 
-                {showCommentsId === ticket.id && (
-                  <div style={{ marginTop: "10px", backgroundColor: dk.expanded, padding: "12px", borderRadius: "6px", border: `1px solid ${dk.expandedBorder}` }}>
-                    {comentarios.length === 0 ? (
-                      <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún. ¡Sé el primero!</p>
-                    ) : (
-                      <div style={{ marginBottom: "12px", maxHeight: "220px", overflowY: "auto" }}>
-                        {comentarios.map((c) => (
-                          <div key={c.id} style={{ padding: "8px 0", borderBottom: `1px solid ${dk.divider}` }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                              <span style={{ fontSize: "12px", fontWeight: "bold", color: dk.text }}>{c.autor}</span>
-                              <span style={{ fontSize: "11px", color: dk.textSub }}>
-                                {new Date(c.created_at).toLocaleString('es-ES', { hour12: false })}
-                              </span>
-                            </div>
-                            <p style={{ margin: "0", fontSize: "13px", color: dk.label }}>{c.content}</p>
-                          </div>
-                        ))}
+                      {/* CAMBIAR PRIORIDAD */}
+                      <div style={{
+                        background: isDark ? "#2a1f18" : "#fff7ed",
+                        borderRadius: "10px", padding: "14px 16px", marginTop: "10px",
+                        border: `1px solid ${isDark ? "#7c2d12" : "#fed7aa"}`,
+                        borderLeft: "4px solid #f97316",
+                      }}>
+                        <label style={{
+                          display: "block", fontSize: "11px", fontWeight: "700",
+                          color: isDark ? "#fb923c" : "#ea580c",
+                          marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px",
+                        }}>
+                          🎯 Cambiar Prioridad
+                        </label>
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                          <select
+                            value={prioridadSeleccionada[ticket.id] ?? ""}
+                            onChange={(e) => setPrioridadSeleccionada(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                            style={{
+                              padding: "8px 12px",
+                              border: `1px solid ${dk.inputBorder}`,
+                              borderRadius: "8px", fontSize: "13px",
+                              flex: 1, backgroundColor: dk.input, color: dk.text,
+                            }}
+                          >
+                            <option value="">Selecciona prioridad...</option>
+                            {PRIORIDADES.filter(p => p !== ticket.priority).map(p => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => {
+                              const p = prioridadSeleccionada[ticket.id] as PrioridadTicket;
+                              if (p) cambiarPrioridad(ticket.id, p);
+                            }}
+                            disabled={!prioridadSeleccionada[ticket.id]}
+                            style={{
+                              background: prioridadSeleccionada[ticket.id]
+                                ? "linear-gradient(135deg,#f97316,#ea580c)"
+                                : "#d1d5db",
+                              color: "white",
+                              padding: "8px 18px",
+                              border: "none",
+                              borderRadius: "8px",
+                              cursor: prioridadSeleccionada[ticket.id] ? "pointer" : "not-allowed",
+                              fontSize: "13px",
+                              fontWeight: "700",
+                              boxShadow: prioridadSeleccionada[ticket.id]
+                                ? "0 2px 8px rgba(249,115,22,0.4)"
+                                : "none",
+                              flexShrink: 0,
+                              width: "auto", marginTop: "0",
+                            }}
+                          >
+                            Actualizar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BOTÓN REABRIR TICKET (HU-019) */}
+                    {ticket.status === "Cerrado" && (
+                      <div style={{ padding: "0 20px 14px" }}>
+                        <button
+                          onClick={() => setReopenTicket(ticket)}
+                          style={{
+                            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                            color: "white",
+                            padding: "7px 16px", border: "none", borderRadius: "8px",
+                            cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                            boxShadow: "0 2px 8px rgba(99,102,241,0.35)",
+                            width: "auto", marginTop: "0",
+                          }}
+                        >
+                          🔄 Reabrir Ticket
+                        </button>
                       </div>
                     )}
-                    <div>
-                      {errorComentario[ticket.id] && (
-                        <p style={{ fontSize: "12px", color: "#ef4444", margin: "0 0 4px 0" }}>{errorComentario[ticket.id]}</p>
-                      )}
-                      <textarea
-                        value={nuevoComentario[ticket.id] || ""}
-                        onChange={(e) => setNuevoComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                        placeholder="Escribe un comentario..."
-                        style={{ width: "100%", padding: "8px", border: `1px solid ${dk.inputBorder}`, borderRadius: "4px", fontSize: "13px", resize: "vertical", minHeight: "60px", boxSizing: "border-box", backgroundColor: dk.input, color: dk.text }}
-                      />
+
+                    {/* HISTORIAL (HU-007) */}
+                    <div style={{ borderTop: `1px solid ${isDark ? "#334155" : "#f1f5f9"}`, padding: "12px 20px" }}>
                       <button
-                        onClick={() => enviarComentario(ticket.id)}
-                        disabled={enviandoComentario}
-                        style={{ marginTop: "6px", backgroundColor: "#7c3aed", color: "white", padding: "6px 16px", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}
+                        onClick={() => verHistorial(ticket.id)}
+                        style={{
+                          background: isDark ? "#0f172a" : "#f8fafc",
+                          border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+                          color: dk.histBtn, fontSize: "13px", fontWeight: "600",
+                          cursor: "pointer", padding: "6px 14px", borderRadius: "8px",
+                          display: "flex", alignItems: "center", gap: "6px",
+                          width: "auto", marginTop: "0",
+                        }}
                       >
-                        {enviandoComentario ? "Enviando..." : "Comentar"}
+                        {showHistorialId === ticket.id ? "▲ Ocultar Actividad" : "📋 Ver Actividad Reciente"}
+                        {loadingHistorial && showHistorialId === ticket.id && " (Cargando...)"}
                       </button>
+
+                      {showHistorialId === ticket.id && (
+                        <div style={{
+                          marginTop: "10px",
+                          background: dk.expanded,
+                          padding: "10px", borderRadius: "8px",
+                          border: `1px solid ${dk.expandedBorder}`,
+                          maxHeight: "300px", overflowY: "auto",
+                        }}>
+                          {historialSelected.length === 0 ? (
+                            <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: 0 }}>No hay registros aún.</p>
+                          ) : (
+                            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                              {historialSelected.map((h, index) => (
+                                <li key={index} style={{
+                                  fontSize: "12px", padding: "8px 0",
+                                  borderBottom: index !== historialSelected.length - 1 ? `1px solid ${dk.divider}` : "none",
+                                }}>
+                                  <div style={{ color: dk.text, fontWeight: "600" }}>
+                                    {h.tipo_accion === 'status_change'
+                                      ? '🔄 Cambio de Estado'
+                                      : h.tipo_accion === 'priority_change'
+                                      ? '🎯 Cambio de Prioridad'
+                                      : h.tipo_accion === 'reopen'
+                                      ? '🔄 Reapertura'
+                                      : '👤 Asignación de Agente'}
+                                  </div>
+                                  <div style={{ color: dk.label }}>
+                                    {h.tipo_accion === 'status_change' || h.tipo_accion === 'priority_change' || h.tipo_accion === 'reopen'
+                                      ? `De "${h.valor_anterior}" a "${h.valor_nuevo}"`
+                                      : `Asignado a Agente ID: ${h.valor_nuevo}`}
+                                  </div>
+                                  <div style={{ fontSize: "11px", color: dk.textSub, marginTop: "2px" }}>
+                                    {new Date(new Date(h.fecha_registro + (h.fecha_registro.includes('Z') ? '' : 'Z')).getTime() - 5 * 60 * 60 * 1000).toLocaleString('es-ES', { hour12: false })} • Por Usuario ID: {h.usuario_accion_id}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* COMENTARIOS (AGENTE) */}
+                    <div style={{ borderTop: `1px solid ${isDark ? "#334155" : "#f1f5f9"}`, padding: "12px 20px" }}>
+                      <button
+                        onClick={() => verComentarios(ticket.id)}
+                        style={{
+                          background: "none", border: "none",
+                          color: dk.commentBtn, fontSize: "13px", fontWeight: "600",
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", padding: "0",
+                          width: "auto", marginTop: "0",
+                        }}
+                      >
+                        {showCommentsId === ticket.id ? "▲ Ocultar Comentarios" : "💬 Ver Comentarios"}
+                        {loadingComentarios && showCommentsId === ticket.id && " (Cargando...)"}
+                      </button>
+
+                      {showCommentsId === ticket.id && (
+                        <div style={{ marginTop: "10px", background: dk.expanded, padding: "12px", borderRadius: "8px", border: `1px solid ${dk.expandedBorder}` }}>
+                          {comentarios.length === 0 ? (
+                            <p style={{ fontSize: "12px", color: dk.textSub, textAlign: "center", margin: "0 0 10px 0" }}>Sin comentarios aún. ¡Sé el primero!</p>
+                          ) : (
+                            <div style={{ marginBottom: "12px", maxHeight: "220px", overflowY: "auto" }}>
+                              {comentarios.map((c) => (
+                                <div key={c.id} style={{ padding: "8px 0", borderBottom: `1px solid ${dk.divider}` }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                                    <span style={{ fontSize: "12px", fontWeight: "bold", color: dk.text }}>{c.autor}</span>
+                                    <span style={{ fontSize: "11px", color: dk.textSub }}>
+                                      {new Date(c.created_at).toLocaleString('es-ES', { hour12: false })}
+                                    </span>
+                                  </div>
+                                  <p style={{ margin: "0", fontSize: "13px", color: dk.label }}>{c.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div>
+                            {errorComentario[ticket.id] && (
+                              <p style={{ fontSize: "12px", color: "#ef4444", margin: "0 0 4px 0" }}>{errorComentario[ticket.id]}</p>
+                            )}
+                            <textarea
+                              value={nuevoComentario[ticket.id] || ""}
+                              onChange={(e) => setNuevoComentario(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                              placeholder="Escribe un comentario..."
+                              style={{
+                                width: "100%", padding: "8px",
+                                border: `1px solid ${dk.inputBorder}`,
+                                borderRadius: "6px", fontSize: "13px",
+                                resize: "vertical", minHeight: "60px",
+                                boxSizing: "border-box",
+                                backgroundColor: dk.input, color: dk.text,
+                              }}
+                            />
+                            <button
+                              onClick={() => enviarComentario(ticket.id)}
+                              disabled={enviandoComentario}
+                              style={{
+                                marginTop: "6px",
+                                background: "linear-gradient(135deg,#7c3aed,#6366f1)",
+                                color: "white", padding: "6px 16px",
+                                border: "none", borderRadius: "6px",
+                                cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                                boxShadow: "0 2px 6px rgba(124,58,237,0.35)",
+                                width: "auto", marginTop: "0",
+                              }}
+                            >
+                              {enviandoComentario ? "Enviando..." : "💬 Comentar"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ADJUNTOS (HU-020) */}
+                    <div style={{ borderTop: `1px solid ${isDark ? "#334155" : "#f1f5f9"}`, padding: "0 20px 16px" }}>
+                      <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* ADJUNTOS (HU-020) */}
-              <AttachmentSection ticketId={ticket.id} userId={user.id} userRole={user.role} />
-              </div>
-            ))}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
